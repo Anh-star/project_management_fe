@@ -1,4 +1,3 @@
-// app/(main)/projects/[id]/page.js
 'use client';
 
 import { useState, useEffect, use } from 'react';
@@ -125,7 +124,6 @@ const TaskItem = ({ task, level = 0, projectId, token, onRefresh, members, curre
         }
     };
 
-    // (Các hàm handleStatusChange, handleUpdateTaskInfo, handleAddSubTask giữ nguyên như cũ)
     const handleStatusChange = async (newStatus) => {
         if (!canUpdateStatus) return;
         setIsUpdatingStatus(true);
@@ -188,8 +186,7 @@ const TaskItem = ({ task, level = 0, projectId, token, onRefresh, members, curre
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`font-semibold text-gray-800 ${task.status === 'DONE' ? 'line-through text-gray-400' : ''}`}>{task.title}</span>
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border ${task.priority === 'URGENT' ? 'bg-red-100 text-red-700 border-red-200' : task.priority === 'HIGH' ? 'bg-orange-100 text-orange-700 border-orange-200' : task.priority === 'LOW' ? 'bg-gray-100 text-gray-600 border-gray-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>{task.priority}</span>
-                                
-                                {/* Cụm nút Admin: Sửa & Xóa */}
+
                                 {canFullEdit && (
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button onClick={() => setIsEditing(true)} className="text-gray-400 hover:text-indigo-600 px-1" title="Chỉnh sửa">✏️</button>
@@ -268,7 +265,6 @@ export default function ProjectTasksPage({ params }) {
 
     useEffect(() => { if (token && projectId) fetchData(); }, [token, projectId]);
 
-    // --- CẬP NHẬT TRẠNG THÁI DỰ ÁN (Complete Project) ---
     const handleUpdateProjectStatus = async (newStatus) => {
         if (!project) return;
         setIsUpdatingProject(true);
@@ -280,9 +276,7 @@ export default function ProjectTasksPage({ params }) {
             });
 
             if (res.ok) {
-                // Cập nhật UI ngay lập tức
                 setProject(prev => ({ ...prev, status: newStatus }));
-                // alert('Đã cập nhật trạng thái dự án!');
             } else {
                 alert('Lỗi: Bạn không có quyền cập nhật dự án này.');
             }
@@ -308,13 +302,11 @@ export default function ProjectTasksPage({ params }) {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
-            {/* HEADER DỰ ÁN - CÓ NƠI CHỈNH STATUS PROJECT */}
             <header className="bg-white shadow-sm p-6 mb-6 border-b border-gray-200 sticky top-0 z-20">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center max-w-5xl mx-auto gap-4">
                     <div>
                         <div className="flex items-center gap-3">
                             <h1 className="text-2xl font-bold text-gray-900">{project?.name || `Dự án #${projectId}`}</h1>
-                            {/* Badge Status hiện tại */}
                             <span className={`px-2 py-0.5 text-xs font-bold rounded-full border ${
                                 project?.status === 'COMPLETED' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'
                             }`}>
@@ -325,7 +317,6 @@ export default function ProjectTasksPage({ params }) {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        {/* DROPDOWN CHỈNH TRẠNG THÁI DỰ ÁN (Chỉ PM/Admin) */}
                         {(user?.role === 'ADMIN' || (user?.role === 'PM' && project?.created_by === user?.id)) ? (
                             <div className="flex items-center bg-gray-50 p-1 rounded-lg border border-gray-200">
                                 <span className="text-xs text-gray-500 px-2">Trạng thái:</span>
@@ -341,7 +332,6 @@ export default function ProjectTasksPage({ params }) {
                             </div>
                         ) : null}
 
-                        {/* Nút thêm Task */}
                         {(user?.role === 'ADMIN' || user?.role === 'PM') && !isCreating && (
                             <button onClick={() => setIsCreating(true)} className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm flex items-center gap-2">
                                 <span>+</span> Việc mới

@@ -1,4 +1,3 @@
-// app/(main)/dashboard/page.js
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -62,7 +61,6 @@ export default function DashboardPage() {
     );
 }
 
-// COMPONENT CARD ĐẸP
 function DashboardCard({ title, value, isWarning = false }) {
     return (
         <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 group">

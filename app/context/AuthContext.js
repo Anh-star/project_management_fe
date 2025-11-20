@@ -1,4 +1,3 @@
-// app/context/AuthContext.js
 'use client'; // Bắt buộc phải là Client Component
 
 import { createContext, useContext, useState, useEffect } from 'react';

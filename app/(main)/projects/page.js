@@ -1,4 +1,3 @@
-// app/(main)/projects/page.js
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -108,11 +107,9 @@ export default function ProjectsPage() {
 
     return (
         <div className="min-h-screen bg-gray-100 p-8">
-            {/* Header của trang */}
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-2xl font-bold text-gray-900">Dự án của tôi</h1>
-                
-                {/* Chỉ Admin hoặc PM mới thấy nút Tạo */}
+
                 {(user?.role === 'ADMIN' || user?.role === 'PM') && (
                     <button
                         onClick={() => setShowForm(!showForm)}
@@ -123,7 +120,6 @@ export default function ProjectsPage() {
                 )}
             </div>
 
-            {/* Form tạo dự án */}
             {showForm && (
                 <div className="bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-200 animate-in fade-in slide-in-from-top-4">
                     <h2 className="text-lg font-semibold mb-4">Nhập thông tin dự án</h2>
@@ -169,14 +165,12 @@ export default function ProjectsPage() {
                 </div>
             )}
 
-            {/* Hiển thị lỗi fetch */}
             {error && (
                 <div className="p-4 bg-red-50 text-red-600 rounded-md mb-6 border border-red-100">
                     Lỗi: {error}
                 </div>
             )}
 
-            {/* GRID DANH SÁCH DỰ ÁN */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {projects.length > 0 ? (
                     projects.map((project) => (

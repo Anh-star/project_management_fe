@@ -1,4 +1,3 @@
-// app/login/page.js
 'use client'; // Bắt buộc là Client Component
 
 import { useState } from 'react';
@@ -68,7 +67,6 @@ export default function LoginPage() {
                         />
                     </div>
 
-                    {/* Hiển thị lỗi */}
                     {error && (
                         <p className="text-sm text-red-600">{error}</p>
                     )}
