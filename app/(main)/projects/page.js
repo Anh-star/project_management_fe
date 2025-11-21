@@ -1,224 +1,208 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext'; // Đảm bảo đường dẫn import đúng
+import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link'; // Import Link để chuyển trang
+import Link from 'next/link';
+import Badge from '../../components/Badge';
+import toast from 'react-hot-toast';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const API_URL = 'http://localhost:5000/api/v1';
 
 export default function ProjectsPage() {
-    const { user, token, loading: authLoading, logout } = useAuth();
+    const { user, token, loading: authLoading } = useAuth();
     const router = useRouter();
 
-    // State danh sách dự án
     const [projects, setProjects] = useState([]);
+    const [search, setSearch] = useState('');
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    // State form tạo dự án
     const [showForm, setShowForm] = useState(false);
+    
+    // Form state
     const [newName, setNewName] = useState('');
     const [newCode, setNewCode] = useState('');
     const [newDescription, setNewDescription] = useState('');
-    const [formError, setFormError] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Delete Modal State
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, projectId: null });
+    const [isDeleting, setIsDeleting] = useState(false);
 
-    // 1. Bảo vệ route (Chuyển về login nếu chưa đăng nhập)
     useEffect(() => {
-        if (!authLoading && !user) {
-            router.push('/login');
-        }
+        if (!authLoading && !user) router.push('/login');
     }, [user, authLoading, router]);
 
-    // 2. Hàm lấy danh sách dự án
-    const fetchProjects = async () => {
+    // Hàm lấy dự án (có tìm kiếm)
+    const fetchProjects = async (keyword = '') => {
         if (!token) return;
-        
         setIsLoading(true);
-        setError(null);
         try {
-            const res = await fetch(`${API_URL}/projects`, {
+            const res = await fetch(`${API_URL}/projects?search=${keyword}`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
             const data = await res.json();
-            
-            if (!res.ok) throw new Error(data.message || 'Lỗi khi tải dự án');
-            
-            // Kiểm tra xem data có phải là mảng không
-            if (Array.isArray(data)) {
-                setProjects(data);
-            } else {
-                setProjects([]); // Fallback nếu API trả về lạ
-            }
+            setProjects(Array.isArray(data) ? data : []);
+        } catch (err) { toast.error(err.message); } 
+        finally { setIsLoading(false); }
+    };
+
+    // Debounce Search (Chờ 0.5s sau khi gõ xong mới tìm)
+    useEffect(() => {
+        if (token) {
+            const timer = setTimeout(() => {
+                fetchProjects(search);
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [token, search]);
+
+    const openDeleteModal = (e, projectId) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDeleteModal({ isOpen: true, projectId });
+    };
+
+    const handleConfirmDelete = async () => {
+        setIsDeleting(true);
+        try {
+            await fetch(`${API_URL}/projects/${deleteModal.projectId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            setProjects(prev => prev.filter(p => p.id !== deleteModal.projectId));
+            toast.success('Đã xóa dự án');
+            setDeleteModal({ isOpen: false, projectId: null });
         } catch (err) {
-            setError(err.message);
+            toast.error('Lỗi kết nối server');
         } finally {
-            setIsLoading(false);
+            setIsDeleting(false);
         }
     };
 
-    // Gọi fetch khi có token
-    useEffect(() => {
-        if (token) {
-            fetchProjects();
-        }
-    }, [token]);
-
-    // 3. Hàm tạo dự án mới
     const handleCreateProject = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        setFormError(null);
-
         try {
             const res = await fetch(`${API_URL}/projects`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    name: newName,
-                    project_code: newCode,
-                    description: newDescription,
-                }),
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ name: newName, project_code: newCode, description: newDescription }),
             });
+            if (!res.ok) throw new Error((await res.json()).message);
             
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message);
-
-            // Reset form và tải lại danh sách
-            setShowForm(false);
-            setNewName('');
-            setNewCode('');
-            setNewDescription('');
+            setShowForm(false); setNewName(''); setNewCode(''); setNewDescription('');
             fetchProjects();
-        } catch (err) {
-            setFormError(err.message);
-        } finally {
-            setIsSubmitting(false);
+            toast.success('Tạo dự án thành công!');
+        } catch (err) { 
+            toast.error(err.message); 
+        } finally { 
+            setIsSubmitting(false); 
         }
     };
 
-    if (authLoading || isLoading) {
-        return <div className="p-8 text-center">Đang tải dữ liệu...</div>;
-    }
+    if (authLoading) return <div className="p-8 text-center">Đang tải...</div>;
 
     return (
-        <div className="min-h-screen bg-gray-100 p-8">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-2xl font-bold text-gray-900">Dự án của tôi</h1>
+        <div className="min-h-screen bg-gray-50 p-8">
+            <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Dự án của tôi</h1>
+                    <p className="text-sm text-gray-500 mt-1">Theo dõi tiến độ và quản lý công việc.</p>
+                </div>
+                
+                <div className="flex gap-3 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64">
+                        <input 
+                            type="text" 
+                            placeholder="Tìm kiếm dự án..." 
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                        <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
+                    </div>
 
-                {(user?.role === 'ADMIN' || user?.role === 'PM') && (
-                    <button
-                        onClick={() => setShowForm(!showForm)}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors shadow-sm"
-                    >
-                        {showForm ? 'Hủy' : '+ Tạo dự án mới'}
-                    </button>
-                )}
+                    {(user?.role === 'ADMIN' || user?.role === 'PM') && (
+                        <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm whitespace-nowrap">
+                            {showForm ? 'Hủy' : '+ Tạo mới'}
+                        </button>
+                    )}
+                </div>
             </div>
 
             {showForm && (
-                <div className="bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-200 animate-in fade-in slide-in-from-top-4">
-                    <h2 className="text-lg font-semibold mb-4">Nhập thông tin dự án</h2>
+                <div className="bg-white p-6 rounded-xl shadow-md mb-8 border border-gray-200 animate-fade-in">
                     <form onSubmit={handleCreateProject} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input
-                                type="text"
-                                placeholder="Tên dự án (VD: Website TMĐT)"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
-                                value={newName}
-                                onChange={(e) => setNewName(e.target.value)}
-                                required
-                            />
-                            <input
-                                type="text"
-                                placeholder="Mã dự án (VD: WEB01) - Phải là duy nhất"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
-                                value={newCode}
-                                onChange={(e) => setNewCode(e.target.value)}
-                                required
-                            />
+                            <input type="text" placeholder="Tên dự án" className="w-full px-4 py-2 border rounded-lg" value={newName} onChange={(e) => setNewName(e.target.value)} required />
+                            <input type="text" placeholder="Mã dự án" className="w-full px-4 py-2 border rounded-lg" value={newCode} onChange={(e) => setNewCode(e.target.value)} required />
                         </div>
-                        <textarea
-                            placeholder="Mô tả dự án..."
-                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
-                            rows="3"
-                            value={newDescription}
-                            onChange={(e) => setNewDescription(e.target.value)}
-                        />
-                        
-                        {formError && <p className="text-red-600 text-sm">{formError}</p>}
-                        
+                        <textarea placeholder="Mô tả..." className="w-full px-4 py-2 border rounded-lg" rows="3" value={newDescription} onChange={(e) => setNewDescription(e.target.value)} />
                         <div className="flex justify-end">
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="px-6 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 disabled:bg-gray-400"
-                            >
-                                {isSubmitting ? 'Đang lưu...' : 'Lưu dự án'}
+                            <button type="submit" disabled={isSubmitting} className="px-6 py-2 bg-green-600 text-white rounded-lg">
+                                {isSubmitting ? '...' : 'Lưu'}
                             </button>
                         </div>
                     </form>
                 </div>
             )}
 
-            {error && (
-                <div className="p-4 bg-red-50 text-red-600 rounded-md mb-6 border border-red-100">
-                    Lỗi: {error}
-                </div>
-            )}
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {projects.length > 0 ? (
                     projects.map((project) => (
-                        // --- QUAN TRỌNG: Bọc toàn bộ thẻ trong Link ---
-                        <Link 
-                            key={project.id} 
-                            href={`/projects/${project.id}`}
-                            className="block group h-full" // block để link phủ kín, h-full để thẻ cao bằng nhau
-                        >
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-indigo-300 transition-all h-full flex flex-col cursor-pointer">
-                                <div className="flex justify-between items-start mb-3">
-                                    <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-600 transition-colors line-clamp-1">
-                                        {project.name}
-                                    </h3>
-                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full shrink-0 ml-2 ${
-                                        project.status === 'COMPLETED' 
-                                            ? 'bg-green-100 text-green-800' 
-                                            : 'bg-blue-50 text-blue-700'
-                                    }`}>
-                                        {project.status}
-                                    </span>
-                                </div>
-                                
-                                <div className="mb-4">
-                                    <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                                        #{project.project_code}
-                                    </span>
-                                </div>
+                        <Link key={project.id} href={`/projects/${project.id}`} className="block group h-full">
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-indigo-300 hover:-translate-y-1 transition-all duration-300 h-full flex flex-col overflow-hidden relative">
+                                <div className={`h-1.5 w-full ${project.status === 'COMPLETED' ? 'bg-green-500' : 'bg-indigo-500'}`} />
+                                <div className="p-6 flex-1 flex flex-col">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex-1">
+                                            <h3 className="text-lg font-bold text-gray-900 group-hover:text-indigo-600 line-clamp-1 mb-1">{project.name}</h3>
+                                            <p className="text-xs font-mono text-gray-400">#{project.project_code}</p>
+                                        </div>
+                                        <Badge value={project.status} />
+                                    </div>
+                                    
+                                    <div className="mt-auto mb-4">
+                                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                            <span>Tiến độ</span>
+                                            <span className="font-bold text-gray-700">{project.progress || 0}%</span>
+                                        </div>
+                                        <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                            <div 
+                                                className={`h-2 rounded-full transition-all duration-1000 ${project.status === 'COMPLETED' ? 'bg-green-500' : 'bg-indigo-500'}`} 
+                                                style={{ width: `${project.progress || 0}%` }}
+                                            />
+                                        </div>
+                                        <div className="text-[10px] text-gray-400 mt-1 flex justify-between">
+                                            <span>{project.completed_tasks} hoàn thành</span>
+                                            <span>{project.total_tasks} tổng việc</span>
+                                        </div>
+                                    </div>
 
-                                <p className="text-gray-600 text-sm mb-6 line-clamp-2 flex-1">
-                                    {project.description || 'Chưa có mô tả cho dự án này.'}
-                                </p>
-
-                                <div className="pt-4 border-t border-gray-100 mt-auto flex items-center text-indigo-600 text-sm font-medium group-hover:translate-x-1 transition-transform">
-                                    Xem công việc <span className="ml-1">&rarr;</span>
+                                    <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
+                                        <span className="text-xs font-medium text-indigo-600 flex items-center group-hover:translate-x-1 transition-transform">Chi tiết →</span>
+                                        {(user?.role === 'ADMIN' || user?.role === 'PM') && (
+                                            <button onClick={(e) => openDeleteModal(e, project.id)} className="text-gray-400 hover:text-red-600 p-1 rounded-md transition-colors z-10">🗑️</button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </Link>
                     ))
                 ) : (
-                    <div className="col-span-full text-center py-12 bg-white rounded-lg border-2 border-dashed border-gray-300">
-                        <p className="text-gray-500 text-lg mb-2">Bạn chưa có dự án nào.</p>
-                        {(user?.role === 'ADMIN' || user?.role === 'PM') && (
-                            <p className="text-gray-400">Hãy bấm nút "+ Tạo dự án mới" ở trên để bắt đầu.</p>
-                        )}
-                    </div>
+                    !showForm && <div className="col-span-full text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-300"><p className="text-gray-500">Không tìm thấy dự án.</p></div>
                 )}
             </div>
+            
+            <ConfirmModal 
+                isOpen={deleteModal.isOpen} 
+                title="Xóa dự án?" 
+                message="Hành động này sẽ xóa toàn bộ công việc và dữ liệu liên quan." 
+                onConfirm={handleConfirmDelete} 
+                onCancel={() => setDeleteModal({isOpen:false, projectId:null})} 
+                isLoading={isDeleting} 
+            />
         </div>
     );
 }
