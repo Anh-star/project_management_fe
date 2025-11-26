@@ -8,7 +8,7 @@ export default function ProjectReport({ projectId, token }) {
     
     const fetchReport = async () => {
         try {
-            const res = await fetch(`http://localhost:5000/api/v1/projects/${projectId}/report`, {
+            const res = await fetch(`/api/v1/projects/${projectId}/report`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.ok) setReport(await res.json());

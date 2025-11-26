@@ -1,10 +1,10 @@
-'use client'; // Bắt buộc phải là Client Component
+'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 // URL của API backend
-const API_URL = 'http://localhost:5000/api/v1';
+const API_URL = '/api/v1';
 
 // 1. Tạo Context
 const AuthContext = createContext();

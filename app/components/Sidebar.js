@@ -1,14 +1,13 @@
 'use client';
 
-import Link from 'next/link';
+// import Link from 'next/link'; // <-- KHÔNG DÙNG LINK NỮA
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
-    const pathname = usePathname(); // Lấy đường dẫn hiện tại để highlight menu
+    const pathname = usePathname(); 
     const { user, logout } = useAuth();
 
-    // Danh sách menu cơ bản
     const menuItems = [
         { 
             name: 'Tổng quan', 
@@ -22,7 +21,6 @@ export default function Sidebar() {
         },
     ];
 
-    // CHỈ HIỂN THỊ MENU "THÀNH VIÊN" NẾU LÀ ADMIN
     if (user?.role === 'ADMIN') {
         menuItems.push({ 
             name: 'Thành viên', 
@@ -34,12 +32,12 @@ export default function Sidebar() {
     return (
         <aside className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col sticky top-0 h-screen">
             <div className="p-6 border-b border-gray-200">
-                <Link href="/dashboard" className="flex items-center gap-2">
+                <a href="/dashboard" className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">
                         P
                     </div>
                     <span className="text-xl font-bold text-gray-800 tracking-tight">PM App</span>
-                </Link>
+                </a>
                 
                 <div className="mt-4 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
                     <p className="text-sm font-medium text-gray-900 truncate">
@@ -53,15 +51,12 @@ export default function Sidebar() {
 
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
                 {menuItems.map((item) => {
-                    // Kiểm tra active: 
-                    // - Trang chủ dashboard phải khớp chính xác
-                    // - Các trang con (VD: /projects/1) vẫn highlight menu cha (/projects)
                     const isActive = item.href === '/dashboard' 
                         ? pathname === '/dashboard'
                         : pathname.startsWith(item.href);
 
                     return (
-                        <Link
+                        <a
                             key={item.href}
                             href={item.href}
                             className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 group ${
@@ -74,7 +69,7 @@ export default function Sidebar() {
                                 {item.icon}
                             </span>
                             {item.name}
-                        </Link>
+                        </a>
                     );
                 })}
             </nav>

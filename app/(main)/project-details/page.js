@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { useAuth } from '../../../context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import Avatar from '../../../components/Avatar';
-import ConfirmModal from '../../../components/ConfirmModal';
-import ProjectReport from '../../../components/ProjectReport'; // Import Component Báo cáo
+import Avatar from '../../components/Avatar';
+import ConfirmModal from '../../components/ConfirmModal';
+import ProjectReport from '../../components/ProjectReport';
 
-const API_URL = 'http://localhost:5000/api/v1';
+const API_URL = '/api/v1';
 
 // --- HELPER: Format ngày ---
 const formatDateForInput = (isoString) => {
@@ -87,7 +87,7 @@ const TaskForm = ({ onSubmit, onCancel, members, isSaving, autoFocus = false, in
     );
 };
 
-// --- COMPONENT 2: TASK ITEM (Đệ quy) ---
+// --- COMPONENT 2: TASK ITEM (Đã chỉnh sửa quyền) ---
 const TaskItem = ({ task, level = 0, projectId, token, onRefresh, members, currentUser, onRequestDelete }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const [isAddingSub, setIsAddingSub] = useState(false);
@@ -95,15 +95,30 @@ const TaskItem = ({ task, level = 0, projectId, token, onRefresh, members, curre
     const [isSaving, setIsSaving] = useState(false);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-    const canUpdateStatus = currentUser?.role === 'ADMIN' || currentUser?.role === 'PM' || (task.assignee_id === currentUser?.id);
-    const canFullEdit = currentUser?.role === 'ADMIN' || currentUser?.role === 'PM';
+    // --- PHÂN QUYỀN (LOGIC QUAN TRỌNG) ---
+    
+    // 1. Quyền sửa trạng thái (Dropdown):
+    // -> Chỉ Admin, PM HOẶC Chính người được giao (Assignee) mới sửa được
+    const canUpdateStatus = 
+        currentUser?.role === 'ADMIN' || 
+        currentUser?.role === 'PM' || 
+        (task.assignee_id && currentUser?.id && task.assignee_id === currentUser.id);
+
+    // 2. Quyền sửa toàn bộ thông tin / Xóa / Thêm con:
+    // -> Chỉ Admin hoặc PM mới được làm (Nhân viên không được tự sửa đề bài)
+    const canFullEdit = 
+        currentUser?.role === 'ADMIN' || 
+        currentUser?.role === 'PM';
 
     const assigneeName = members.find(m => m.id === task.assignee_id)?.username || 'Chưa giao';
     const formatDate = (dateString) => dateString ? new Date(dateString).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : '';
 
     // Cập nhật trạng thái nhanh
     const handleStatusChange = async (val) => {
-        if (!canUpdateStatus) return;
+        if (!canUpdateStatus) {
+            toast.error('Bạn không được phân công công việc này!');
+            return;
+        }
         setIsUpdatingStatus(true);
         try {
             const res = await fetch(`${API_URL}/projects/${projectId}/tasks/${task.id}`, {
@@ -111,9 +126,20 @@ const TaskItem = ({ task, level = 0, projectId, token, onRefresh, members, curre
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ status: val })
             });
-            if (res.ok) { onRefresh(); toast.success('Đã cập nhật trạng thái'); }
-        } catch(e) { toast.error('Lỗi kết nối'); } 
-        finally { setIsUpdatingStatus(false); }
+            
+            // Xử lý lỗi từ backend (ví dụ: Task con chưa xong thì Task cha không được DONE)
+            const data = await res.json();
+            if (res.ok) { 
+                onRefresh(); 
+                toast.success('Đã cập nhật trạng thái'); 
+            } else {
+                toast.error(data.message || 'Không thể cập nhật');
+            }
+        } catch(e) { 
+            toast.error('Lỗi kết nối'); 
+        } finally { 
+            setIsUpdatingStatus(false); 
+        }
     };
 
     // Cập nhật thông tin chi tiết
@@ -149,7 +175,13 @@ const TaskItem = ({ task, level = 0, projectId, token, onRefresh, members, curre
     if (isEditing) {
         return (
             <div className={`mt-4 ${level > 0 ? 'ml-8' : ''}`}>
-                <TaskForm initialData={task} onSubmit={handleUpdateInfo} onCancel={() => setIsEditing(false)} members={members} isSaving={isSaving} />
+                <TaskForm 
+                    initialData={task} 
+                    onSubmit={handleUpdateInfo} 
+                    onCancel={() => setIsEditing(false)} 
+                    members={members} 
+                    isSaving={isSaving} 
+                />
             </div>
         );
     }
@@ -160,7 +192,10 @@ const TaskItem = ({ task, level = 0, projectId, token, onRefresh, members, curre
             {level > 0 && <div className="absolute bg-gray-300" style={{ left: '-24px', top: '36px', width: '24px', height: '1px' }} />}
 
             <div className={`mt-4 ${level > 0 ? 'ml-8' : ''}`}>
-                <div className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border transition-all duration-200 relative z-10 border-gray-200 shadow-sm hover:border-indigo-300 hover:shadow">
+                <div className={`group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border transition-all duration-200 relative z-10 
+                    ${canUpdateStatus ? 'border-gray-200 hover:border-indigo-300' : 'border-gray-100 opacity-90'} 
+                    shadow-sm hover:shadow`}
+                >
                     
                     <div className="flex items-start gap-3 flex-1">
                         <button onClick={() => setIsExpanded(!isExpanded)} className={`mt-1 w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 transition-colors ${(!task.subTasks?.length) ? 'invisible' : ''}`}>
@@ -170,7 +205,16 @@ const TaskItem = ({ task, level = 0, projectId, token, onRefresh, members, curre
                         <div className="flex flex-col w-full">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`font-semibold text-gray-800 ${task.status === 'DONE' ? 'line-through text-gray-400' : ''}`}>{task.title}</span>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border ${task.priority === 'URGENT' ? 'bg-red-100 text-red-700 border-red-200' : task.priority === 'HIGH' ? 'bg-orange-100 text-orange-700 border-orange-200' : task.priority === 'LOW' ? 'bg-gray-100 text-gray-600 border-gray-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>{task.priority}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border ${
+                                    task.priority === 'URGENT' ? 'bg-red-100 text-red-700 border-red-200' :
+                                    task.priority === 'HIGH' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                                    task.priority === 'LOW' ? 'bg-gray-100 text-gray-600 border-gray-200' :
+                                    'bg-blue-50 text-blue-600 border-blue-200'
+                                }`}>
+                                    {task.priority}
+                                </span>
+
+                                {/* Nút Sửa/Xóa (Chỉ Admin/PM) */}
                                 {canFullEdit && (
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button onClick={() => setIsEditing(true)} className="px-1 text-gray-400 hover:text-indigo-600 transition-colors" title="Sửa">✏️</button>
@@ -178,17 +222,35 @@ const TaskItem = ({ task, level = 0, projectId, token, onRefresh, members, curre
                                     </div>
                                 )}
                             </div>
+                            
                             {task.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{task.description}</p>}
+                            
                             <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                                <div className="flex items-center gap-1" title="Người thực hiện">👤 <span className="font-medium text-gray-700">{assigneeName}</span></div>
+                                <div className="flex items-center gap-1" title="Người thực hiện">
+                                    👤 <span className={`font-medium ${task.assignee_id === currentUser?.id ? 'text-indigo-600 font-bold' : 'text-gray-700'}`}>
+                                        {assigneeName} {task.assignee_id === currentUser?.id ? '(Bạn)' : ''}
+                                    </span>
+                                </div>
                                 {task.due_date && (<div className="flex items-center gap-1 text-orange-600 bg-orange-50 px-1.5 rounded" title="Hạn chót">📅 {formatDate(task.due_date)}</div>)}
                             </div>
                         </div>
                     </div>
 
+                    {/* Dropdown Trạng Thái */}
                     <div className="flex items-center gap-3 mt-3 sm:mt-0 pl-8 sm:pl-0">
                         {canFullEdit && <button onClick={() => setIsAddingSub(!isAddingSub)} className="opacity-0 group-hover:opacity-100 text-xs font-medium text-indigo-600 hover:underline transition-opacity">+ Con</button>}
-                        <select value={task.status} onChange={(e) => handleStatusChange(e.target.value)} disabled={!canUpdateStatus || isUpdatingStatus} className={`text-xs font-bold px-3 py-1.5 rounded-lg border outline-none cursor-pointer transition-colors ${task.status === 'DONE' ? 'bg-green-100 text-green-700 border-green-200' : task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'} ${!canUpdateStatus ? 'opacity-60 cursor-not-allowed' : 'hover:bg-opacity-80'}`}>
+                        
+                        <select 
+                            value={task.status} 
+                            onChange={(e) => handleStatusChange(e.target.value)} 
+                            disabled={!canUpdateStatus || isUpdatingStatus} 
+                            className={`text-xs font-bold px-3 py-1.5 rounded-lg border outline-none transition-colors ${
+                                task.status === 'DONE' ? 'bg-green-100 text-green-700 border-green-200' : 
+                                task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700 border-blue-200' : 
+                                'bg-gray-100 text-gray-600 border-gray-200'
+                            } ${!canUpdateStatus ? 'opacity-50 cursor-not-allowed bg-gray-200 text-gray-400 border-gray-200' : 'cursor-pointer hover:bg-opacity-80'}`}
+                            title={!canUpdateStatus ? "Chỉ người được giao mới có quyền sửa trạng thái" : "Cập nhật trạng thái"}
+                        >
                             <option value="TODO">TODO</option>
                             <option value="IN_PROGRESS">IN PROGRESS</option>
                             <option value="REVIEW">REVIEW</option>
@@ -209,10 +271,10 @@ const TaskItem = ({ task, level = 0, projectId, token, onRefresh, members, curre
     );
 };
 
-// --- TRANG CHÍNH (Page) ---
-export default function ProjectTasksPage({ params }) {
-    const unwrappedParams = use(params);
-    const projectId = unwrappedParams.id;
+// --- CONTENT CHÍNH (Đã tách ra để bọc Suspense) ---
+function ProjectDetailsContent() {
+    const searchParams = useSearchParams();
+    const projectId = searchParams.get('id'); 
     const { user, token } = useAuth();
     
     const [project, setProject] = useState(null);
@@ -227,11 +289,12 @@ export default function ProjectTasksPage({ params }) {
     const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
     const [isInviting, setIsInviting] = useState(false);
+    const [candidates, setCandidates] = useState([]); 
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, id: null, title: '', message: '' });
     const [isProcessingDelete, setIsProcessingDelete] = useState(false);
 
     const fetchData = async () => {
-        if (!token) return;
+        if (!token || !projectId) return;
         try {
             const [resAll, resTasks, resMembers] = await Promise.all([
                 fetch(`${API_URL}/projects`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -251,42 +314,15 @@ export default function ProjectTasksPage({ params }) {
 
     useEffect(() => { if (token && projectId) fetchData(); }, [token, projectId]);
 
-    // Handlers
-const handleUpdateProjectStatus = async (newStatus) => {
-        if (!project) return;
-        setIsUpdatingProject(true);
-        try {
-            const res = await fetch(`${API_URL}/projects/${projectId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: newStatus })
-            });
-
-            // 1. Đọc dữ liệu trả về từ Backend (kể cả khi lỗi)
+    // --- Handlers ---
+    const handleUpdateProjectStatus = async (newStatus) => {
+        if(!project) return; setIsUpdatingProject(true);
+        try { 
+            const res = await fetch(`${API_URL}/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ status: newStatus }) }); 
             const data = await res.json();
-
-            // 2. Kiểm tra: Nếu status không phải 200-299 (tức là có lỗi)
-            if (!res.ok) {
-                // Ném lỗi ra với message từ Backend (VD: "Còn 3 công việc chưa xong")
-                throw new Error(data.message || 'Không thể cập nhật trạng thái');
-            }
-
-            // 3. Chỉ chạy đoạn này nếu thành công
-            setProject(p => ({ ...p, status: newStatus }));
-            toast.success(`Dự án đã chuyển sang: ${newStatus}`);
-
-        } catch (e) {
-            // 4. Hiển thị lỗi chính xác từ Backend
-            toast.error(e.message);
-            
-            // (Tùy chọn) Reload lại để dropdown quay về trạng thái cũ
-            // fetchData(); 
-        } finally {
-            setIsUpdatingProject(false);
-        }
+            if (!res.ok) throw new Error(data.message || 'Lỗi cập nhật');
+            setProject(p => ({...p, status: newStatus})); toast.success(`Dự án: ${newStatus}`); 
+        } catch(e){ toast.error(e.message); } finally{setIsUpdatingProject(false)}
     };
 
     const handleCreateRootTask = async (data) => {
@@ -297,23 +333,38 @@ const handleUpdateProjectStatus = async (newStatus) => {
         } catch(e){ toast.error('Lỗi tạo'); }
     };
 
+    const handleOpenInviteModal = async () => {
+        setIsMemberModalOpen(true);
+        try {
+            const res = await fetch(`${API_URL}/users?limit=100`, { headers: { Authorization: `Bearer ${token}` } });
+            if (res.ok) {
+                const data = await res.json();
+                const allUsers = data.data || data; 
+                const memberIds = new Set(members.map(m => m.id));
+                const available = allUsers.filter(u => !memberIds.has(u.id) && u.role !== 'ADMIN');
+                setCandidates(available);
+            }
+        } catch (e) { console.error(e); }
+    };
+
     const handleInviteMember = async (e) => {
-        e.preventDefault(); if (!inviteEmail.trim()) return; setIsInviting(true);
+        e.preventDefault(); 
+        if (!inviteEmail) return toast.error("Vui lòng chọn thành viên");
+        setIsInviting(true);
         try {
             const res = await fetch(`${API_URL}/projects/${projectId}/members`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ email: inviteEmail }) });
             const data = await res.json();
-            if (res.ok) { toast.success('Đã thêm thành viên!'); setInviteEmail(''); fetchData(); } 
+            if (res.ok) { 
+                toast.success('Đã thêm thành viên!'); setInviteEmail(''); fetchData(); 
+                setCandidates(prev => prev.filter(c => c.email !== inviteEmail));
+            } 
             else { toast.error(data.message || 'Lỗi mời'); }
         } catch (error) { toast.error('Lỗi kết nối'); } 
         finally { setIsInviting(false); }
     };
 
     const openConfirmDelete = (type, id, name) => {
-        setConfirmModal({
-            isOpen: true, type, id,
-            title: `Xóa ${type === 'TASK' ? 'công việc' : 'thành viên'}?`,
-            message: `Bạn có chắc muốn xóa ${name}?`
-        });
+        setConfirmModal({ isOpen: true, type, id, title: `Xóa ${type==='TASK'?'công việc':'thành viên'}?`, message: `Bạn có chắc muốn xóa ${name}?` });
     };
 
     const handleConfirmAction = async () => {
@@ -328,32 +379,21 @@ const handleUpdateProjectStatus = async (newStatus) => {
 
     const canManageMembers = user?.role === 'ADMIN' || (user?.role === 'PM' && project?.created_by === user.id);
 
+    if (!projectId) return <div className="p-8">Dự án không tồn tại</div>;
     if (loading) return <div className="p-8 text-center">Đang tải...</div>;
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
-            {/* HEADER */}
+            {/* Header */}
             <header className="bg-white shadow-sm p-6 mb-6 border-b border-gray-200 sticky top-0 z-20">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center max-w-5xl mx-auto gap-4">
                     <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold text-gray-900">{project?.name || `Dự án #${projectId}`}</h1>
-                            <span className={`px-2 py-0.5 text-xs font-bold rounded-full border ${project?.status==='COMPLETED'?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700'}`}>{project?.status}</span>
-                        </div>
-                        <div className="flex items-center gap-4 mt-2">
-                            <button onClick={() => setIsMemberModalOpen(true)} className="flex items-center gap-2 text-sm text-indigo-600 hover:bg-indigo-50 px-3 py-1 rounded-full transition-colors border border-indigo-100 font-medium">👥 {members.length} Thành viên</button>
-                        </div>
+                        <div className="flex items-center gap-3"><h1 className="text-2xl font-bold text-gray-900">{project?.name || `Dự án #${projectId}`}</h1><span className={`px-2 py-0.5 text-xs font-bold rounded-full border ${project?.status==='COMPLETED'?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700'}`}>{project?.status}</span></div>
+                        <div className="flex items-center gap-4 mt-2"><button onClick={handleOpenInviteModal} className="flex items-center gap-2 text-sm text-indigo-600 hover:bg-indigo-50 px-3 py-1 rounded-full transition-colors border border-indigo-100 font-medium">👥 {members.length} Thành viên</button></div>
                     </div>
                     <div className="flex items-center gap-3">
-                         {(user?.role === 'ADMIN' || (user?.role === 'PM' && project?.created_by === user?.id)) ? (
-                            <div className="flex items-center bg-gray-50 p-1 rounded-lg border border-gray-200">
-                                <span className="text-xs text-gray-500 px-2">Trạng thái:</span>
-                                <select value={project?.status || 'IN_PROGRESS'} onChange={(e) => handleUpdateProjectStatus(e.target.value)} disabled={isUpdatingProject} className="bg-white text-sm font-medium text-gray-700 px-2 py-1 rounded border-none focus:ring-0 cursor-pointer outline-none"><option value="IN_PROGRESS">Đang triển khai</option><option value="COMPLETED">Đã hoàn thành</option></select>
-                            </div>
-                        ) : null}
-                        {(user?.role === 'ADMIN' || user?.role === 'PM') && !isCreating && activeTab === 'TASKS' && (
-                            <button onClick={() => setIsCreating(true)} className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm flex items-center gap-2 transition-all"><span>+</span> Việc mới</button>
-                        )}
+                         {(user?.role === 'ADMIN' || (user?.role === 'PM' && project?.created_by === user?.id)) ? (<div className="flex items-center bg-gray-50 p-1 rounded-lg border border-gray-200"><span className="text-xs text-gray-500 px-2">Trạng thái:</span><select value={project?.status || 'IN_PROGRESS'} onChange={(e) => handleUpdateProjectStatus(e.target.value)} disabled={isUpdatingProject} className="bg-white text-sm font-medium text-gray-700 px-2 py-1 rounded border-none focus:ring-0 cursor-pointer outline-none"><option value="IN_PROGRESS">Đang triển khai</option><option value="COMPLETED">Đã hoàn thành</option></select></div>) : null}
+                        {(user?.role === 'ADMIN' || user?.role === 'PM') && !isCreating && activeTab === 'TASKS' && (<button onClick={() => setIsCreating(true)} className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm flex items-center gap-2 transition-all"><span>+</span> Việc mới</button>)}
                     </div>
                 </div>
             </header>
@@ -364,15 +404,13 @@ const handleUpdateProjectStatus = async (newStatus) => {
                 <button onClick={() => setActiveTab('REPORT')} className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab==='REPORT'?'border-indigo-600 text-indigo-600':'border-transparent text-gray-500 hover:text-gray-700'}`}>Báo cáo tiến độ</button>
             </div>
 
-            {/* MAIN CONTENT */}
             <main className="px-6 max-w-5xl mx-auto">
                 {activeTab === 'TASKS' ? (
                     <>
                         {isCreating && <div className="mb-8 bg-white p-6 rounded-xl shadow-md border border-indigo-100"><TaskForm onSubmit={handleCreateRootTask} onCancel={() => setIsCreating(false)} members={members} isSaving={false} /></div>}
                         <div className="space-y-4">
-                            {tasks.length > 0 ? tasks.map((task) => (
-                                <TaskItem key={task.id} task={task} projectId={projectId} token={token} onRefresh={fetchData} members={members} currentUser={user} onRequestDelete={openConfirmDelete} />
-                            )) : !isCreating && <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-300"><p className="text-gray-500">Dự án chưa có công việc nào.</p></div>}
+                            {tasks.length > 0 ? tasks.map((task) => (<TaskItem key={task.id} task={task} projectId={projectId} token={token} onRefresh={fetchData} members={members} currentUser={user} onRequestDelete={openConfirmDelete} />)) 
+                            : !isCreating && <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-300"><p className="text-gray-500">Dự án chưa có công việc nào.</p></div>}
                         </div>
                     </>
                 ) : (
@@ -388,34 +426,30 @@ const handleUpdateProjectStatus = async (newStatus) => {
                         <div className="p-6 overflow-y-auto flex-1">
                             {canManageMembers && (
                                 <form onSubmit={handleInviteMember} className="flex gap-2 mb-6">
-                                    <input type="email" placeholder="Nhập email để mời..." className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
-                                    <button type="submit" disabled={isInviting} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium">{isInviting ? '...' : 'Mời'}</button>
+                                    <select className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-sm" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}>
+                                        <option value="">-- Chọn nhân viên để mời --</option>
+                                        {candidates.map(u => (<option key={u.id} value={u.email}>{u.username} ({u.email})</option>))}
+                                        {candidates.length === 0 && <option disabled>Không còn nhân viên nào</option>}
+                                    </select>
+                                    <button type="submit" disabled={isInviting || !inviteEmail} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium">{isInviting ? '...' : 'Thêm'}</button>
                                 </form>
                             )}
-                            <div className="space-y-2">
-                                {members.map(member => (
-                                    <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-transparent hover:border-gray-200 transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            <Avatar name={member.username} size="md" />
-                                            <div><p className="font-medium text-sm text-gray-900">{member.username}</p><p className="text-xs text-gray-500">{member.email}</p></div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${member.role==='ADMIN'?'bg-red-50 text-red-600 border-red-100':member.role==='PM'?'bg-indigo-50 text-indigo-600 border-indigo-100':'bg-gray-200 text-gray-600 border-gray-300'}`}>{member.role}</span>
-                                            {canManageMembers && member.id !== project?.created_by && member.id !== user.id && (
-                                                <button onClick={() => openConfirmDelete('MEMBER', member.id, member.username)} className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors" title="Xóa khỏi dự án">🗑️</button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            <div className="space-y-2">{members.map(member => (<div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-transparent hover:border-gray-200 transition-colors"><div className="flex items-center gap-3"><Avatar name={member.username} size="md" /><div><p className="font-medium text-sm text-gray-900">{member.username}</p><p className="text-xs text-gray-500">{member.email}</p></div></div><div className="flex items-center gap-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${member.role==='ADMIN'?'bg-red-50 text-red-600 border-red-100':member.role==='PM'?'bg-indigo-50 text-indigo-600 border-indigo-100':'bg-gray-200 text-gray-600 border-gray-300'}`}>{member.role}</span>{canManageMembers && member.id !== project?.created_by && member.id !== user.id && (<button onClick={() => openConfirmDelete('MEMBER', member.id, member.username)} className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors">🗑️</button>)}</div></div>))}</div>
                         </div>
                         <div className="p-4 border-t border-gray-100 bg-gray-50 text-right"><button onClick={() => setIsMemberModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-white hover:shadow-sm rounded-lg border border-transparent hover:border-gray-200 transition-all font-medium">Đóng</button></div>
                     </div>
                 </div>
             )}
-
-            {/* MODAL XÁC NHẬN CHUNG */}
             <ConfirmModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={handleConfirmAction} onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })} isLoading={isProcessingDelete} />
         </div>
+    );
+}
+
+// --- EXPORT MẶC ĐỊNH (BỌC SUSPENSE) ---
+export default function Page() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center">Đang tải...</div>}>
+            <ProjectDetailsContent />
+        </Suspense>
     );
 }
