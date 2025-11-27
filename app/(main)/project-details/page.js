@@ -100,12 +100,15 @@ const TaskItem = ({ task, level = 0, projectId, token, onRefresh, members, curre
         if (!canUpdateStatus) return; setIsUpdatingStatus(true);
         try {
             const res = await fetch(`${API_URL}/projects/${projectId}/tasks/${task.id}`, {
-                method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ status: val })
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ status: val })
             });
             const data = await res.json();
             if (res.ok) { onRefresh(); toast.success('Đã cập nhật trạng thái'); }
-            else { toast.error(data.message || 'Lỗi cập nhật'); }
-        } catch(e) { toast.error('Lỗi kết nối'); } finally { setIsUpdatingStatus(false); }
+            else { toast.error(data.message || 'Không thể cập nhật'); }
+        } catch(e) { toast.error('Lỗi kết nối'); } 
+        finally { setIsUpdatingStatus(false); }
     };
 
     const handleUpdateInfo = async (data) => {
@@ -130,66 +133,81 @@ const TaskItem = ({ task, level = 0, projectId, token, onRefresh, members, curre
         } catch(e) { toast.error('Lỗi kết nối'); } finally { setIsSaving(false); }
     };
 
-    // Hàm lấy class màu cho status
-    const getStatusClass = () => {
-        let base = styles.statusSelectSmall;
-        if (!canUpdateStatus) return `${base} opacity-50 cursor-not-allowed bg-gray-200`;
-        base += ' hover:bg-opacity-80 ';
-        if (task.status === 'DONE') return base + styles.statusDone;
-        if (task.status === 'IN_PROGRESS') return base + styles.statusProgress;
-        return base + styles.statusDefault;
-    };
-
     if (isEditing) return <div className={`mt-4 ${level > 0 ? 'ml-8' : ''}`}><TaskForm initialData={task} onSubmit={handleUpdateInfo} onCancel={() => setIsEditing(false)} members={members} isSaving={isSaving} /></div>;
 
     return (
         <div className="relative">
-            {level > 0 && <div className={styles.guideLineV} />}
-            {level > 0 && <div className={styles.guideLineH} />}
+            {level > 0 && <div className="absolute bg-gray-300" style={{ left: '-24px', top: '-10px', bottom: '0', width: '1px', height: 'calc(100% + 10px)' }} />}
+            {level > 0 && <div className="absolute bg-gray-300" style={{ left: '-24px', top: '36px', width: '24px', height: '1px' }} />}
 
             <div className={`mt-4 ${level > 0 ? 'ml-8' : ''}`}>
-                <div className={`${styles.taskCard} group ${canUpdateStatus ? styles.taskCardActive : styles.taskCardDisabled}`}>
+                <div className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border transition-all duration-200 relative z-10 border-gray-200 shadow-sm hover:border-indigo-300 hover:shadow">
                     
                     <div className="flex items-start gap-3 flex-1">
-                        <button onClick={() => setIsExpanded(!isExpanded)} className={`${styles.expandBtn} ${(!task.subTasks?.length) ? 'invisible' : ''}`}>
+                        <button onClick={() => setIsExpanded(!isExpanded)} className={`mt-1 w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 transition-colors ${(!task.subTasks?.length) ? 'invisible' : ''}`}>
                             <span className={`text-xs transform transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
                         </button>
                         
                         <div className="flex flex-col w-full">
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`${styles.taskTitle} ${task.status === 'DONE' ? styles.taskTitleDone : ''}`}>{task.title}</span>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border ${
-                                    task.priority === 'URGENT' ? 'bg-red-100 text-red-700 border-red-200' :
-                                    task.priority === 'HIGH' ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                                    'bg-blue-50 text-blue-600 border-blue-200'
-                                }`}>{task.priority}</span>
+                                <span className={`font-semibold text-gray-800 ${task.status === 'DONE' ? 'line-through text-gray-400' : ''}`}>{task.title}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border ${task.priority === 'URGENT' ? 'bg-red-100 text-red-700 border-red-200' : task.priority === 'HIGH' ? 'bg-orange-100 text-orange-700 border-orange-200' : task.priority === 'LOW' ? 'bg-gray-100 text-gray-600 border-gray-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>{task.priority}</span>
 
                                 {canFullEdit && (
-                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => setIsEditing(true)} className="px-1 text-gray-400 hover:text-indigo-600 transition-colors">✏️</button>
-                                        <button onClick={() => onRequestDelete('TASK', task.id, task.title)} className="px-1 text-gray-400 hover:text-red-600 transition-colors">🗑️</button>
+                                    // Sửa ở đây: Bỏ opacity-0 group-hover:opacity-100 để nút luôn hiện
+                                    <div className="flex gap-1 ml-2">
+                                        <button onClick={() => setIsEditing(true)} className="px-1 text-gray-400 hover:text-indigo-600 transition-colors" title="Sửa">✏️</button>
+                                        <button onClick={() => onRequestDelete('TASK', task.id, task.title)} className="px-1 text-gray-400 hover:text-red-600 transition-colors" title="Xóa">🗑️</button>
                                     </div>
                                 )}
                             </div>
                             
-                            {task.description && <p className={styles.taskDesc}>{task.description}</p>}
-                            <div className={styles.metaGroup}>
-                                <div className={styles.assignee}>👤 <span className="font-medium text-gray-700">{assigneeName}</span></div>
-                                {task.due_date && (<div className={styles.dueDate}>📅 {formatDate(task.due_date)}</div>)}
+                            {task.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{task.description}</p>}
+                            <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                                <div className="flex items-center gap-1" title="Người thực hiện">👤 <span className="font-medium text-gray-700">{assigneeName}</span></div>
+                                {task.due_date && (<div className="flex items-center gap-1 text-orange-600 bg-orange-50 px-1.5 rounded" title="Hạn chót">📅 {formatDate(task.due_date)}</div>)}
                             </div>
                         </div>
                     </div>
 
-                    <div className={styles.actionGroup}>
-                        {canFullEdit && <button onClick={() => setIsAddingSub(!isAddingSub)} className={styles.addSubBtn}>+ Con</button>}
-                        <select value={task.status} onChange={(e) => handleStatusChange(e.target.value)} disabled={!canUpdateStatus || isUpdatingStatus} className={getStatusClass()}>
-                            <option value="TODO">TODO</option><option value="IN_PROGRESS">IN PROGRESS</option><option value="REVIEW">REVIEW</option><option value="DONE">DONE</option>
+                    <div className="flex items-center gap-3 mt-3 sm:mt-0 pl-8 sm:pl-0">
+                        {/* SỬA Ở ĐÂY: Nút Thêm con hiển thị rõ ràng, không ẩn */}
+                        {canFullEdit && (
+                            <button 
+                                onClick={() => setIsAddingSub(!isAddingSub)} 
+                                className="text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors whitespace-nowrap"
+                            >
+                                + Việc con
+                            </button>
+                        )}
+                        
+                        <select 
+                            value={task.status} 
+                            onChange={(e) => handleStatusChange(e.target.value)} 
+                            disabled={!canUpdateStatus || isUpdatingStatus} 
+                            className={`text-xs font-bold px-3 py-1.5 rounded-lg border outline-none cursor-pointer transition-colors ${
+                                task.status === 'DONE' ? 'bg-green-100 text-green-700 border-green-200' : 
+                                task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700 border-blue-200' : 
+                                'bg-gray-100 text-gray-600 border-gray-200'
+                            } ${!canUpdateStatus ? 'opacity-60 cursor-not-allowed bg-gray-200' : 'hover:bg-opacity-80'}`}
+                        >
+                            <option value="TODO">TODO</option>
+                            <option value="IN_PROGRESS">IN PROGRESS</option>
+                            <option value="REVIEW">REVIEW</option>
+                            <option value="DONE">DONE</option>
                         </select>
                     </div>
                 </div>
 
                 {isAddingSub && (
-                    <div className="mt-3 ml-8"><div className="flex items-start gap-2"><span className="text-gray-300 text-2xl leading-none mt-[-5px]">↳</span><div className="flex-1"><TaskForm onSubmit={handleAddSub} onCancel={() => setIsAddingSub(false)} members={members} isSaving={isSaving} autoFocus /></div></div></div>
+                    <div className="mt-3 ml-8">
+                        <div className="flex items-start gap-2">
+                            <span className="text-gray-300 text-2xl leading-none mt-[-5px]">↳</span>
+                            <div className="flex-1">
+                                <TaskForm onSubmit={handleAddSub} onCancel={() => setIsAddingSub(false)} members={members} isSaving={isSaving} autoFocus />
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {isExpanded && task.subTasks?.map(sub => (
