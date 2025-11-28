@@ -1,31 +1,63 @@
 /* app/(main)/dashboard/styles.module.css */
 
-.container { @apply min-h-screen bg-gray-50 p-8; }
-.header { @apply mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4; }
-.title { @apply text-3xl font-bold text-gray-900; }
-.subtitle { @apply text-gray-500 mt-2; }
+.container {
+  @apply min-h-screen bg-gray-50 p-8;
+}
+.header {
+  @apply mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4;
+}
+.title {
+  @apply text-3xl font-bold text-gray-900;
+}
+.subtitle {
+  @apply text-gray-500 mt-2;
+}
 
-.adminFilter { @apply flex items-center gap-2 bg-white p-2 rounded-lg shadow-sm border border-gray-200; }
-.filterLabel { @apply text-sm text-gray-500 font-medium pl-2; }
-.filterSelect { @apply outline-none text-sm font-bold text-indigo-700 bg-transparent cursor-pointer border-none focus:ring-0; }
+.adminFilter {
+  @apply flex items-center gap-2 bg-white p-2 rounded-lg shadow-sm border border-gray-200;
+}
+.filterLabel {
+  @apply text-sm text-gray-500 font-medium pl-2;
+}
+.filterSelect {
+  @apply outline-none text-sm font-bold text-indigo-700 bg-transparent cursor-pointer border-none focus:ring-0;
+}
 
 .grid {
-    display: grid;
-    @apply grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-fade-in;
+  display: grid;
+  @apply grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-fade-in;
 }
 
 .card {
-    /* Đã xóa 'group' */
-    @apply relative overflow-hidden bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300;
+  /* Đã xóa 'group' */
+  @apply relative overflow-hidden bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300;
 }
 
-.cardIconBg { @apply absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-10 group-hover:scale-110 transition-transform duration-500; }
-.iconBgDefault { @apply bg-indigo-500; }
-.iconBgWarning { @apply bg-red-500; }
+.cardIconBg {
+  @apply absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-10 group-hover:scale-110 transition-transform duration-500;
+}
+.iconBgDefault {
+  @apply bg-indigo-500;
+}
+.iconBgWarning {
+  @apply bg-red-500;
+}
 
-.cardContent { @apply relative z-10; }
-.cardLabel { @apply text-xs font-bold text-gray-400 uppercase tracking-wider; }
-.cardValueContainer { @apply flex items-baseline mt-2; }
-.cardValue { @apply text-4xl font-extrabold tracking-tight; }
-.valueDefault { @apply text-gray-900; }
-.valueWarning { @apply text-red-600; }
+.cardContent {
+  @apply relative z-10;
+}
+.cardLabel {
+  @apply text-xs font-bold text-gray-400 uppercase tracking-wider;
+}
+.cardValueContainer {
+  @apply flex items-baseline mt-2;
+}
+.cardValue {
+  @apply text-4xl font-extrabold tracking-tight;
+}
+.valueDefault {
+  @apply text-gray-900;
+}
+.valueWarning {
+  @apply text-red-600;
+}

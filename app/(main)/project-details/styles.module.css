@@ -1,116 +1,275 @@
 /* app/(main)/project-details/styles.module.css */
 
 /* --- CONTAINER --- */
-.container { @apply min-h-screen bg-gray-50 pb-20; }
+.container {
+  @apply min-h-screen bg-gray-50 pb-20;
+}
 
 /* --- HEADER --- */
-.header { @apply bg-white shadow-sm p-6 mb-6 border-b border-gray-200 sticky top-0 z-20; }
-.headerContent { @apply flex flex-col md:flex-row md:justify-between md:items-center max-w-5xl mx-auto gap-4; }
-.projectTitleWrapper { @apply flex items-center gap-3; }
-.projectTitle { @apply text-2xl font-bold text-gray-900; }
-.projectStatus { @apply px-2 py-0.5 text-xs font-bold rounded-full border; }
-.statusCompleted { @apply bg-green-100 text-green-700 border-green-200; }
-.statusProgress { @apply bg-yellow-100 text-yellow-700 border-yellow-200; }
-.memberBtn { @apply flex items-center gap-2 text-sm text-indigo-600 hover:bg-indigo-50 px-3 py-1 rounded-full transition-colors border border-indigo-100 font-medium; }
-.headerActions { @apply flex items-center gap-3; }
+.header {
+  @apply bg-white shadow-sm p-6 mb-6 border-b border-gray-200 sticky top-0 z-20;
+}
+.headerContent {
+  @apply flex flex-col md:flex-row md:justify-between md:items-center max-w-5xl mx-auto gap-4;
+}
+.projectTitleWrapper {
+  @apply flex items-center gap-3;
+}
+.projectTitle {
+  @apply text-2xl font-bold text-gray-900;
+}
+.projectStatus {
+  @apply px-2 py-0.5 text-xs font-bold rounded-full border;
+}
+.statusCompleted {
+  @apply bg-green-100 text-green-700 border-green-200;
+}
+.statusProgress {
+  @apply bg-yellow-100 text-yellow-700 border-yellow-200;
+}
+.memberBtn {
+  @apply flex items-center gap-2 text-sm text-indigo-600 hover:bg-indigo-50 px-3 py-1 rounded-full transition-colors border border-indigo-100 font-medium;
+}
+.headerActions {
+  @apply flex items-center gap-3;
+}
 
-.projectStatusSelectWrapper { @apply flex items-center bg-gray-50 p-1 rounded-lg border border-gray-200; }
-.projectStatusLabel { @apply text-xs text-gray-500 px-2; }
-.projectStatusSelect { @apply bg-white text-sm font-medium text-gray-700 px-2 py-1 rounded border-none focus:ring-0 cursor-pointer outline-none; }
-.createTaskBtn { @apply px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm flex items-center gap-2 transition-all; }
+.projectStatusSelectWrapper {
+  @apply flex items-center bg-gray-50 p-1 rounded-lg border border-gray-200;
+}
+.projectStatusLabel {
+  @apply text-xs text-gray-500 px-2;
+}
+.projectStatusSelect {
+  @apply bg-white text-sm font-medium text-gray-700 px-2 py-1 rounded border-none focus:ring-0 cursor-pointer outline-none;
+}
+.createTaskBtn {
+  @apply px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm flex items-center gap-2 transition-all;
+}
 
 /* --- TABS --- */
-.tabContainer { @apply max-w-5xl mx-auto px-6 border-b border-gray-200 mb-6 flex gap-6; }
-.tabBtn { @apply pb-3 text-sm font-medium border-b-2 transition-colors; }
-.tabActive { @apply border-indigo-600 text-indigo-600; }
-.tabInactive { @apply border-transparent text-gray-500 hover:text-gray-700; }
+.tabContainer {
+  @apply max-w-5xl mx-auto px-6 border-b border-gray-200 mb-6 flex gap-6;
+}
+.tabBtn {
+  @apply pb-3 text-sm font-medium border-b-2 transition-colors;
+}
+.tabActive {
+  @apply border-indigo-600 text-indigo-600;
+}
+.tabInactive {
+  @apply border-transparent text-gray-500 hover:text-gray-700;
+}
 
 /* --- MAIN CONTENT --- */
-.mainContent { @apply px-6 max-w-5xl mx-auto; }
-.emptyState { @apply text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-300; }
+.mainContent {
+  @apply px-6 max-w-5xl mx-auto;
+}
+.emptyState {
+  @apply text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-300;
+}
 
 /* --- TASK FORM --- */
-.formContainer { @apply bg-white p-6 rounded-xl shadow-md border border-indigo-100 mb-8 animate-fade-in; }
-.subTaskFormContainer { @apply bg-gray-50 p-4 rounded-lg border border-indigo-100 shadow-sm space-y-3 animate-fade-in; }
-.formHeader { @apply flex justify-between items-center mb-2; }
-.formTitle { @apply text-xs font-bold text-indigo-600 uppercase tracking-wider; }
-
-.inputGroup { @apply mb-0; }
-.inputLabel { @apply block text-xs font-medium text-gray-700 mb-1; }
-.inputField { @apply w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white transition-all; }
-
-.formRow2 { 
-    display: grid; 
-    @apply grid-cols-2 gap-4; 
+.formContainer {
+  @apply bg-white p-6 rounded-xl shadow-md border border-indigo-100 mb-8 animate-fade-in;
 }
-.formActions { @apply flex justify-end gap-2 pt-2 border-t border-gray-200 mt-2; }
-.btnCancel { @apply px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors; }
-.btnSave { @apply px-4 py-2 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50; }
+.subTaskFormContainer {
+  @apply bg-gray-50 p-4 rounded-lg border border-indigo-100 shadow-sm space-y-3 animate-fade-in;
+}
+.formHeader {
+  @apply flex justify-between items-center mb-2;
+}
+.formTitle {
+  @apply text-xs font-bold text-indigo-600 uppercase tracking-wider;
+}
+
+.inputGroup {
+  @apply mb-0;
+}
+.inputLabel {
+  @apply block text-xs font-medium text-gray-700 mb-1;
+}
+.inputField {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white transition-all;
+}
+
+.formRow2 {
+  display: grid;
+  @apply grid-cols-2 gap-4;
+}
+.formActions {
+  @apply flex justify-end gap-2 pt-2 border-t border-gray-200 mt-2;
+}
+.btnCancel {
+  @apply px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors;
+}
+.btnSave {
+  @apply px-4 py-2 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50;
+}
 
 /* --- TASK ITEM --- */
-.treeNode { @apply relative; }
-.guideLineV { @apply absolute bg-gray-300; left: -24px; top: -10px; bottom: 0; width: 1px; height: calc(100% + 10px); }
-.guideLineH { @apply absolute bg-gray-300; left: -24px; top: 36px; width: 24px; height: 1px; }
-.taskWrapper { @apply mt-4; }
-.taskWrapperChild { @apply ml-8; }
+.treeNode {
+  @apply relative;
+}
+.guideLineV {
+  @apply absolute bg-gray-300;
+  left: -24px;
+  top: -10px;
+  bottom: 0;
+  width: 1px;
+  height: calc(100% + 10px);
+}
+.guideLineH {
+  @apply absolute bg-gray-300;
+  left: -24px;
+  top: 36px;
+  width: 24px;
+  height: 1px;
+}
+.taskWrapper {
+  @apply mt-4;
+}
+.taskWrapperChild {
+  @apply ml-8;
+}
 
 .taskCard {
-    /* Đã xóa 'group' ở đây */
-    @apply flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border transition-all duration-200 relative z-10 shadow-sm hover:shadow;
+  /* Đã xóa 'group' ở đây */
+  @apply flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border transition-all duration-200 relative z-10 shadow-sm hover:shadow;
 }
-.taskCardActive { @apply border-gray-200 hover:border-indigo-300; }
-.taskCardDisabled { @apply border-gray-100 opacity-90; }
+.taskCardActive {
+  @apply border-gray-200 hover:border-indigo-300;
+}
+.taskCardDisabled {
+  @apply border-gray-100 opacity-90;
+}
 
-.taskLeft { @apply flex items-start gap-3 flex-1; }
-.expandBtn { @apply mt-1 w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 transition-colors; }
+.taskLeft {
+  @apply flex items-start gap-3 flex-1;
+}
+.expandBtn {
+  @apply mt-1 w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 transition-colors;
+}
 
-.taskInfo { @apply flex flex-col w-full; }
-.taskHeader { @apply flex items-center gap-2 flex-wrap; }
-.taskTitle { @apply font-semibold text-gray-800; }
-.taskTitleDone { @apply line-through text-gray-400; }
+.taskInfo {
+  @apply flex flex-col w-full;
+}
+.taskHeader {
+  @apply flex items-center gap-2 flex-wrap;
+}
+.taskTitle {
+  @apply font-semibold text-gray-800;
+}
+.taskTitleDone {
+  @apply line-through text-gray-400;
+}
 
-.badgePriority { @apply text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border; }
-.badgeUrgent { @apply bg-red-100 text-red-700 border-red-200; }
-.badgeHigh { @apply bg-orange-100 text-orange-700 border-orange-200; }
-.badgeLow { @apply bg-gray-100 text-gray-600 border-gray-200; }
-.badgeMedium { @apply bg-blue-50 text-blue-600 border-blue-200; }
+.badgePriority {
+  @apply text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border;
+}
+.badgeUrgent {
+  @apply bg-red-100 text-red-700 border-red-200;
+}
+.badgeHigh {
+  @apply bg-orange-100 text-orange-700 border-orange-200;
+}
+.badgeLow {
+  @apply bg-gray-100 text-gray-600 border-gray-200;
+}
+.badgeMedium {
+  @apply bg-blue-50 text-blue-600 border-blue-200;
+}
 
 /* Sửa nút Edit: Hiện luôn (Bỏ opacity-0 group-hover...) */
-.editActions { @apply flex gap-1 ml-2; }
-.iconBtn { @apply px-1.5 py-0.5 rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors; }
-.iconBtnDelete { @apply px-1.5 py-0.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors; }
+.editActions {
+  @apply flex gap-1 ml-2;
+}
+.iconBtn {
+  @apply px-1.5 py-0.5 rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors;
+}
+.iconBtnDelete {
+  @apply px-1.5 py-0.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors;
+}
 
-.taskDesc { @apply text-xs text-gray-500 mt-1 line-clamp-2; }
-.taskMeta { @apply flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500; }
-.metaItem { @apply flex items-center gap-1; }
+.taskDesc {
+  @apply text-xs text-gray-500 mt-1 line-clamp-2;
+}
+.taskMeta {
+  @apply flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500;
+}
+.metaItem {
+  @apply flex items-center gap-1;
+}
 
-.taskRight { @apply flex items-center gap-3 mt-3 sm:mt-0 pl-8 sm:pl-0; }
+.taskRight {
+  @apply flex items-center gap-3 mt-3 sm:mt-0 pl-8 sm:pl-0;
+}
 
 /* Sửa nút Thêm Con: Hiện rõ ràng */
-.addSubBtn { @apply text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors whitespace-nowrap flex items-center gap-1 border border-indigo-100; }
+.addSubBtn {
+  @apply text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors whitespace-nowrap flex items-center gap-1 border border-indigo-100;
+}
 
 /* Dropdown Status */
 .statusSelectSmall {
-    @apply text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-300 outline-none cursor-pointer transition-colors bg-white shadow-sm;
+  @apply text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-300 outline-none cursor-pointer transition-colors bg-white shadow-sm;
 }
-.statusSelectDisabled { @apply opacity-50 cursor-not-allowed bg-gray-200 border-gray-200; }
-.statusDone { @apply bg-green-100 text-green-700 border-green-200; }
-.statusProgress { @apply bg-blue-100 text-blue-700 border-blue-200; }
-.statusDefault { @apply bg-gray-100 text-gray-600 border-gray-200; }
+.statusSelectDisabled {
+  @apply opacity-50 cursor-not-allowed bg-gray-200 border-gray-200;
+}
+.statusDone {
+  @apply bg-green-100 text-green-700 border-green-200;
+}
+.statusProgress {
+  @apply bg-blue-100 text-blue-700 border-blue-200;
+}
+.statusDefault {
+  @apply bg-gray-100 text-gray-600 border-gray-200;
+}
 
 /* --- MODAL MEMBER --- */
-.modalOverlay { @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in; }
-.modalContainer { @apply bg-white p-0 rounded-xl shadow-xl w-[500px] border border-gray-200 overflow-hidden flex flex-col max-h-[80vh]; }
-.modalHeader { @apply p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50; }
-.modalTitle { @apply text-lg font-bold text-gray-800; }
-.closeBtn { @apply text-gray-400 hover:text-gray-600 text-xl; }
-.modalBody { @apply p-6 overflow-y-auto flex-1; }
-.inviteForm { @apply flex gap-2 mb-6; }
-.memberList { @apply space-y-2; }
-.memberRow { @apply flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-transparent hover:border-gray-200 transition-colors; }
-.memberInfo { @apply flex items-center gap-3; }
-.memberRoleBadge { @apply px-2 py-0.5 text-[10px] font-bold rounded border; }
-.roleAdmin { @apply bg-red-50 text-red-600 border-red-100; }
-.rolePM { @apply bg-indigo-50 text-indigo-600 border-indigo-100; }
-.roleMember { @apply bg-gray-200 text-gray-600 border-gray-300; }
-.modalFooter { @apply p-4 border-t border-gray-100 bg-gray-50 text-right; }
+.modalOverlay {
+  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in;
+}
+.modalContainer {
+  @apply bg-white p-0 rounded-xl shadow-xl w-[500px] border border-gray-200 overflow-hidden flex flex-col max-h-[80vh];
+}
+.modalHeader {
+  @apply p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50;
+}
+.modalTitle {
+  @apply text-lg font-bold text-gray-800;
+}
+.closeBtn {
+  @apply text-gray-400 hover:text-gray-600 text-xl;
+}
+.modalBody {
+  @apply p-6 overflow-y-auto flex-1;
+}
+.inviteForm {
+  @apply flex gap-2 mb-6;
+}
+.memberList {
+  @apply space-y-2;
+}
+.memberRow {
+  @apply flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-transparent hover:border-gray-200 transition-colors;
+}
+.memberInfo {
+  @apply flex items-center gap-3;
+}
+.memberRoleBadge {
+  @apply px-2 py-0.5 text-[10px] font-bold rounded border;
+}
+.roleAdmin {
+  @apply bg-red-50 text-red-600 border-red-100;
+}
+.rolePM {
+  @apply bg-indigo-50 text-indigo-600 border-indigo-100;
+}
+.roleMember {
+  @apply bg-gray-200 text-gray-600 border-gray-300;
+}
+.modalFooter {
+  @apply p-4 border-t border-gray-100 bg-gray-50 text-right;
+}

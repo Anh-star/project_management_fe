@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from './context/AuthContext'; 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "./context/AuthContext";
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -12,9 +12,9 @@ export default function Home() {
     // Khi AuthContext load xong
     if (!loading) {
       if (user) {
-        router.push('/dashboard');
+        router.push("/dashboard");
       } else {
-        router.push('/login');  
+        router.push("/login");
       }
     }
   }, [user, loading, router]);

@@ -1,46 +1,88 @@
 /* app/(main)/resources/styles.module.css */
 
-.container { @apply min-h-screen bg-gray-50 p-8; }
+.container {
+  @apply min-h-screen bg-gray-50 p-8;
+}
 
-.header { @apply mb-8; }
-.title { @apply text-2xl font-bold text-gray-900; }
-.subtitle { @apply text-sm text-gray-500 mt-1; }
+.header {
+  @apply mb-8;
+}
+.title {
+  @apply text-2xl font-bold text-gray-900;
+}
+.subtitle {
+  @apply text-sm text-gray-500 mt-1;
+}
 
 /* GRID LAYOUT - SỬA LỖI TẠI ĐÂY */
 .grid {
-    display: grid; /* Dùng CSS thuần thay vì @apply grid */
-    @apply grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+  display: grid; /* Dùng CSS thuần thay vì @apply grid */
+  @apply grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
 }
 
 /* CARD NHÂN VIÊN */
 .card {
-    @apply bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all relative overflow-hidden;
+  @apply bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all relative overflow-hidden;
 }
 
-.cardHeader { @apply flex items-center gap-4 mb-4; }
-.userInfo { @apply flex-1; }
-.userName { @apply font-bold text-gray-900; }
-.userRole { @apply text-xs text-gray-500 uppercase; }
+.cardHeader {
+  @apply flex items-center gap-4 mb-4;
+}
+.userInfo {
+  @apply flex-1;
+}
+.userName {
+  @apply font-bold text-gray-900;
+}
+.userRole {
+  @apply text-xs text-gray-500 uppercase;
+}
 
 .workloadBadge {
-    @apply px-3 py-1 rounded-full text-xs font-bold border;
+  @apply px-3 py-1 rounded-full text-xs font-bold border;
 }
-.loadFree { @apply bg-green-50 text-green-700 border-green-200; }   /* Rảnh */
-.loadOk { @apply bg-yellow-50 text-yellow-700 border-yellow-200; }   /* Bình thường */
-.loadHeavy { @apply bg-red-50 text-red-700 border-red-200; }         /* Quá tải */
+.loadFree {
+  @apply bg-green-50 text-green-700 border-green-200;
+} /* Rảnh */
+.loadOk {
+  @apply bg-yellow-50 text-yellow-700 border-yellow-200;
+} /* Bình thường */
+.loadHeavy {
+  @apply bg-red-50 text-red-700 border-red-200;
+} /* Quá tải */
 
 /* THANH TIẾN ĐỘ TẢI */
-.loadBarContainer { @apply w-full bg-gray-100 h-2 rounded-full mb-4 overflow-hidden; }
-.loadBar { @apply h-full transition-all duration-500 rounded-full; }
+.loadBarContainer {
+  @apply w-full bg-gray-100 h-2 rounded-full mb-4 overflow-hidden;
+}
+.loadBar {
+  @apply h-full transition-all duration-500 rounded-full;
+}
 
 /* DANH SÁCH TASK */
 /* Đã xóa custom-scrollbar ở đây để sửa lỗi trước đó */
-.taskList { @apply mt-4 border-t border-gray-100 pt-4 max-h-60 overflow-y-auto; }
+.taskList {
+  @apply mt-4 border-t border-gray-100 pt-4 max-h-60 overflow-y-auto;
+}
 
-.taskItem { @apply flex justify-between items-start mb-2 text-xs p-2 bg-gray-50 rounded border border-gray-100; }
-.taskTitle { @apply font-medium text-gray-700 line-clamp-1 flex-1 mr-2; }
-.taskPriority { @apply font-bold; }
-.priorityURGENT { @apply text-red-600; }
-.priorityHIGH { @apply text-orange-500; }
-.priorityMEDIUM { @apply text-blue-500; }
-.priorityLOW { @apply text-gray-500; }
+.taskItem {
+  @apply flex justify-between items-start mb-2 text-xs p-2 bg-gray-50 rounded border border-gray-100;
+}
+.taskTitle {
+  @apply font-medium text-gray-700 line-clamp-1 flex-1 mr-2;
+}
+.taskPriority {
+  @apply font-bold;
+}
+.priorityURGENT {
+  @apply text-red-600;
+}
+.priorityHIGH {
+  @apply text-orange-500;
+}
+.priorityMEDIUM {
+  @apply text-blue-500;
+}
+.priorityLOW {
+  @apply text-gray-500;
+}
