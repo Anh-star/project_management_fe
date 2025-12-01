@@ -10,6 +10,7 @@ export default function Sidebar() {
   // Menu cơ bản
   const menuItems = [
     { name: "Tổng quan", href: "/dashboard", icon: "📊" },
+    { name: "Lịch biểu", href: "/calendar", icon: "📅" },
     { name: "Dự án", href: "/projects", icon: "📁" },
   ];
 

@@ -7,18 +7,29 @@ import toast from "react-hot-toast";
 import Avatar from "../../components/Avatar";
 import ConfirmModal from "../../components/ConfirmModal";
 import ProjectReport from "../../components/ProjectReport";
-import AttachmentList from "../../components/AttachmentList"; // 1. IMPORT
-import NotificationBell from "../../components/NotificationBell";
+import AttachmentList from "../../components/AttachmentList";
 import styles from "./styles.module.css";
 
 const API_URL = "/api/v1";
 
+// --- 1. HÀM SỬA LỖI HIỂN THỊ TRONG Ô INPUT ---
+// Hàm này lấy giờ trên máy tính của bạn (Local) để điền vào ô input
+// Giúp input không bị lệch múi giờ khi mở form sửa
 const formatDateForInput = (isoString) => {
   if (!isoString) return "";
-  const date = new Date(isoString);
-  const offset = date.getTimezoneOffset() * 60000;
-  return new Date(date - offset).toISOString().slice(0, 16);
+  const date = new Date(isoString); // Trình duyệt tự đổi UTC về Local tại đây
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  // Kết quả: "2023-11-25T14:30" (Đúng giờ Việt Nam)
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
+
+// Hàm hiển thị text đẹp (VN)
 const formatDateDisplay = (isoString) => {
   if (!isoString) return "";
   return new Date(isoString).toLocaleDateString("vi-VN", {
@@ -30,6 +41,25 @@ const formatDateDisplay = (isoString) => {
   });
 };
 
+const calculateDuration = (start, end) => {
+  if (!start || !end) return "";
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const diffMs = endDate - startDate;
+  if (diffMs < 0) return "0 giây";
+
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const days = Math.floor(totalSeconds / (3600 * 24));
+  const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) return `${days} ngày ${hours} giờ`;
+  else if (hours > 0) return `${hours} giờ ${minutes} phút`;
+  else return `${minutes} phút ${seconds} giây`;
+};
+
+// --- TASK FORM ---
 const TaskForm = ({
   onSubmit,
   onCancel,
@@ -42,20 +72,36 @@ const TaskForm = ({
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
     description: initialData?.description || "",
-    start_date: formatDateForInput(initialData?.start_date),
+    // Sử dụng hàm mới sửa để hiển thị đúng giờ trong ô input
     due_date: formatDateForInput(initialData?.due_date),
     priority: initialData?.priority || "MEDIUM",
     assignee_id: initialData?.assignee_id || "",
   });
+
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.title.trim()) return;
+
     const payload = { ...formData };
-    if (!initialData) payload.start_date = new Date().toISOString();
+
+    // Nếu tạo mới: Lấy giờ hiện tại (UTC)
+    if (!initialData) {
+      payload.start_date = new Date().toISOString();
+    }
+
+    // --- QUAN TRỌNG: CHUYỂN ĐỔI KHI LƯU ---
+    // Khi người dùng chọn "14:30" trên form, nó là giờ Local.
+    // Ta cần new Date(...) để trình duyệt đổi nó sang UTC trước khi gửi về Server.
+    if (payload.due_date) {
+      payload.due_date = new Date(payload.due_date).toISOString();
+    }
+
     onSubmit(payload);
   };
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -71,6 +117,7 @@ const TaskForm = ({
           </span>
         )}
       </div>
+
       <div className={styles.inputGroup}>
         <label className={styles.inputLabel}>
           Tên công việc <span className="text-red-500">*</span>
@@ -85,6 +132,7 @@ const TaskForm = ({
           placeholder="Nhập tên công việc..."
         />
       </div>
+
       <div className={styles.inputGroup}>
         <label className={styles.inputLabel}>Mô tả</label>
         <textarea
@@ -96,6 +144,7 @@ const TaskForm = ({
           placeholder="Mô tả chi tiết..."
         />
       </div>
+
       <div className={styles.formRow2}>
         <div>
           <label className={styles.inputLabel}>Hạn chót</label>
@@ -122,6 +171,7 @@ const TaskForm = ({
           </select>
         </div>
       </div>
+
       <div className={styles.inputGroup}>
         <label className={styles.inputLabel}>Giao cho ai?</label>
         <select
@@ -138,6 +188,7 @@ const TaskForm = ({
           ))}
         </select>
       </div>
+
       <div className={styles.formActions}>
         <button type="button" onClick={onCancel} className={styles.btnCancel}>
           Hủy
@@ -150,6 +201,7 @@ const TaskForm = ({
   );
 };
 
+// --- TASK ITEM ---
 const TaskItem = ({
   task,
   level = 0,
@@ -165,6 +217,7 @@ const TaskItem = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
   const canUpdateStatus =
     currentUser?.role === "ADMIN" ||
     currentUser?.role === "PM" ||
@@ -173,12 +226,14 @@ const TaskItem = ({
     currentUser?.role === "ADMIN" || currentUser?.role === "PM";
   const assigneeName =
     members.find((m) => m.id === task.assignee_id)?.username || "Chưa giao";
+
   const getPriorityClass = (p) => {
     if (p === "URGENT") return styles.badgeUrgent;
     if (p === "HIGH") return styles.badgeHigh;
     if (p === "LOW") return styles.badgeLow;
     return styles.badgeMedium;
   };
+
   const getStatusClass = () => {
     let base = styles.statusSelectSmall;
     if (!canUpdateStatus) return `${base} ${styles.statusSelectDisabled}`;
@@ -188,6 +243,7 @@ const TaskItem = ({
       return base + " " + styles.statusProgress;
     return base + " " + styles.statusDefault;
   };
+
   const handleStatusChange = async (val) => {
     if (!canUpdateStatus) {
       toast.error("Bạn không được phân công công việc này!");
@@ -219,6 +275,7 @@ const TaskItem = ({
       setIsUpdatingStatus(false);
     }
   };
+
   const handleUpdateInfo = async (data) => {
     setIsSaving(true);
     try {
@@ -240,7 +297,7 @@ const TaskItem = ({
       if (res.ok) {
         setIsEditing(false);
         onRefresh();
-        toast.success("Đã cập nhật");
+        toast.success("Đã cập nhật công việc");
       } else {
         toast.error(d.message);
       }
@@ -250,6 +307,7 @@ const TaskItem = ({
       setIsSaving(false);
     }
   };
+
   const handleAddSub = async (data) => {
     setIsSaving(true);
     try {
@@ -283,7 +341,9 @@ const TaskItem = ({
 
   if (isEditing)
     return (
-      <div className={`mt-4 ${level > 0 ? "ml-8" : ""}`}>
+      <div
+        className={`${styles.taskWrapper} ${level > 0 ? styles.taskWrapperChild : ""}`}
+      >
         <TaskForm
           initialData={task}
           onSubmit={handleUpdateInfo}
@@ -297,8 +357,9 @@ const TaskItem = ({
 
   return (
     <div className={styles.treeNode}>
-      {level > 0 && <div className={styles.guideLineV} />}{" "}
+      {level > 0 && <div className={styles.guideLineV} />}
       {level > 0 && <div className={styles.guideLineH} />}
+
       <div
         className={`${styles.taskWrapper} ${level > 0 ? styles.taskWrapperChild : ""}`}
       >
@@ -316,6 +377,7 @@ const TaskItem = ({
                 ▶
               </span>
             </button>
+
             <div className={styles.taskInfo}>
               <div className={styles.taskHeader}>
                 <span
@@ -360,12 +422,23 @@ const TaskItem = ({
                   </span>
                 </div>
                 {task.status === "DONE" && task.completed_at ? (
-                  <div
-                    className="flex items-center gap-1 text-green-600 bg-green-50 px-1.5 rounded border border-green-100"
-                    title="Hoàn thành lúc"
-                  >
-                    🏁 {formatDateDisplay(task.completed_at)}
-                  </div>
+                  <>
+                    <div
+                      className="flex items-center gap-1 text-blue-600 bg-blue-50 px-1.5 rounded border border-blue-100"
+                      title="Hoàn thành lúc"
+                    >
+                      🏁 <span>{formatDateDisplay(task.completed_at)}</span>
+                    </div>
+                    <div
+                      className="flex items-center gap-1 text-green-600 bg-green-50 px-1.5 rounded border border-green-100"
+                      title="Tổng thời gian"
+                    >
+                      ⏱️{" "}
+                      <span>
+                        {calculateDuration(task.created_at, task.completed_at)}
+                      </span>
+                    </div>
+                  </>
                 ) : (
                   task.due_date && (
                     <div
@@ -409,16 +482,13 @@ const TaskItem = ({
             </select>
           </div>
         </div>
-
-        {/* --- 2. CHÈN COMPONENT ATTACHMENT VÀO ĐÂY --- */}
-        <div className="ml-4 pl-4 border-l-2 border-gray-100">
+        <div className="ml-8 pl-4 border-l border-gray-100">
           <AttachmentList
             taskId={task.id}
             token={token}
             canEdit={canFullEdit || task.assignee_id === currentUser?.id}
           />
         </div>
-
         {isAddingSub && (
           <div className={styles.taskWrapperChild}>
             <div className="flex items-start gap-2">
@@ -456,11 +526,12 @@ const TaskItem = ({
   );
 };
 
-// --- CONTENT ---
+// --- CONTENT CHÍNH ---
 function ProjectDetailsContent() {
   const searchParams = useSearchParams();
   const projectId = searchParams.get("id");
   const { user, token } = useAuth();
+
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [members, setMembers] = useState([]);
@@ -468,8 +539,10 @@ function ProjectDetailsContent() {
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdatingProject, setIsUpdatingProject] = useState(false);
   const [activeTab, setActiveTab] = useState("TASKS");
+
   const [priorityFilter, setPriorityFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
@@ -490,6 +563,7 @@ function ProjectDetailsContent() {
       if (priorityFilter) params.append("priority", priorityFilter);
       if (statusFilter) params.append("status", statusFilter);
       const taskQuery = params.toString() ? `?${params.toString()}` : "";
+
       const [resAll, resTasks, resMembers] = await Promise.all([
         fetch(`${API_URL}/projects`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -501,6 +575,7 @@ function ProjectDetailsContent() {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
+
       if (resAll.ok) {
         const all = await resAll.json();
         setProject(all.find((p) => p.id === parseInt(projectId)));
@@ -513,6 +588,7 @@ function ProjectDetailsContent() {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     if (token && projectId) fetchData();
   }, [token, projectId, priorityFilter, statusFilter]);
@@ -529,8 +605,8 @@ function ProjectDetailsContent() {
         },
         body: JSON.stringify({ status: newStatus }),
       });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.message);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Lỗi cập nhật");
       setProject((p) => ({ ...p, status: newStatus }));
       toast.success(`Dự án: ${newStatus}`);
     } catch (e) {
@@ -539,6 +615,7 @@ function ProjectDetailsContent() {
       setIsUpdatingProject(false);
     }
   };
+
   const handleCreateRootTask = async (data) => {
     setIsCreating(true);
     try {
@@ -560,6 +637,7 @@ function ProjectDetailsContent() {
       toast.error("Lỗi tạo");
     }
   };
+
   const handleOpenInviteModal = async () => {
     setIsMemberModalOpen(true);
     try {
@@ -667,9 +745,6 @@ function ProjectDetailsContent() {
             </div>
           </div>
           <div className={styles.headerActions}>
-            <div className="mr-2">
-              <NotificationBell />
-            </div>
             {user?.role === "ADMIN" ||
             (user?.role === "PM" && project?.created_by === user?.id) ? (
               <div className={styles.projectStatusSelectWrapper}>
@@ -748,6 +823,7 @@ function ProjectDetailsContent() {
                 </select>
               </div>
             </div>
+
             {isCreating && (
               <div className={styles.formContainer}>
                 <TaskForm
@@ -773,7 +849,7 @@ function ProjectDetailsContent() {
                     />
                   ))
                 : !isCreating && (
-                    <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-300">
+                    <div className={styles.emptyState}>
                       <p className="text-gray-500">
                         Không tìm thấy công việc nào.
                       </p>
