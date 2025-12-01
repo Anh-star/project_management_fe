@@ -5,28 +5,31 @@ import { useAuth } from "../../context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 
-// --- IMPORTS COMPONENTS ---
+// Components
 import Avatar from "../../components/Avatar";
 import ConfirmModal from "../../components/ConfirmModal";
 import ProjectReport from "../../components/ProjectReport";
 import AttachmentList from "../../components/AttachmentList";
-import CommentSection from "../../components/CommentSection"; // Tích hợp bình luận
-import NotificationBell from "../../components/NotificationBell"; // Tích hợp chuông
+import CommentSection from "../../components/CommentSection"; // Khung chat/bình luận
 import styles from "./styles.module.css";
 
 const API_URL = "/api/v1";
 
 // --- HELPERS ---
 
-// Format cho input datetime-local
+// Format ngày cho input (Local Timezone)
 const formatDateForInput = (isoString) => {
   if (!isoString) return "";
   const date = new Date(isoString);
-  const offset = date.getTimezoneOffset() * 60000;
-  return new Date(date - offset).toISOString().slice(0, 16);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
-// Format hiển thị (VN)
+// Format ngày hiển thị (VN)
 const formatDateDisplay = (isoString) => {
   if (!isoString) return "";
   return new Date(isoString).toLocaleDateString("vi-VN", {
@@ -38,12 +41,13 @@ const formatDateDisplay = (isoString) => {
   });
 };
 
-// Tính thời gian thực hiện (Lead Time)
+// Tính thời gian thực hiện chi tiết
 const calculateDuration = (start, end) => {
   if (!start || !end) return "";
   const startDate = new Date(start);
   const endDate = new Date(end);
   const diffMs = endDate - startDate;
+
   if (diffMs <= 0) return "Vừa xong";
 
   const totalSeconds = Math.floor(diffMs / 1000);
@@ -70,7 +74,6 @@ const TaskForm = ({
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
     description: initialData?.description || "",
-    // start_date ẩn, tự động gán khi tạo mới
     due_date: formatDateForInput(initialData?.due_date),
     priority: initialData?.priority || "MEDIUM",
     assignee_id: initialData?.assignee_id || "",
@@ -84,10 +87,12 @@ const TaskForm = ({
     if (!formData.title.trim()) return;
 
     const payload = { ...formData };
-    // Nếu tạo mới -> gán start_date = NOW
-    if (!initialData) {
-      payload.start_date = new Date().toISOString();
-    }
+
+    // Chuyển đổi giờ Local sang UTC khi gửi
+    if (!initialData) payload.start_date = new Date().toISOString();
+    if (payload.due_date)
+      payload.due_date = new Date(payload.due_date).toISOString();
+
     onSubmit(payload);
   };
 
@@ -214,30 +219,29 @@ const TaskItem = ({
     task.assignee_id === currentUser?.id;
   const canFullEdit =
     currentUser?.role === "ADMIN" || currentUser?.role === "PM";
-
   const assigneeName =
     members.find((m) => m.id === task.assignee_id)?.username || "Chưa giao";
 
-  // Helper Styles
   const getPriorityClass = (p) => {
     if (p === "URGENT") return styles.badgeUrgent;
     if (p === "HIGH") return styles.badgeHigh;
     if (p === "LOW") return styles.badgeLow;
     return styles.badgeMedium;
   };
+
   const getStatusClass = () => {
     let base = styles.statusSelectSmall;
     if (!canUpdateStatus) return `${base} ${styles.statusSelectDisabled}`;
+    base += " hover:bg-opacity-80 ";
     if (task.status === "DONE") return base + " " + styles.statusDone;
     if (task.status === "IN_PROGRESS")
       return base + " " + styles.statusProgress;
     return base + " " + styles.statusDefault;
   };
 
-  // Handlers
   const handleStatusChange = async (val) => {
     if (!canUpdateStatus) {
-      toast.error("Bạn không được phân công!");
+      toast.error("Bạn không được phân công công việc này!");
       return;
     }
     setIsUpdatingStatus(true);
@@ -284,12 +288,13 @@ const TaskItem = ({
           }),
         }
       );
+      const d = await res.json();
       if (res.ok) {
         setIsEditing(false);
         onRefresh();
-        toast.success("Đã cập nhật");
+        toast.success("Đã cập nhật công việc");
       } else {
-        toast.error("Lỗi cập nhật");
+        toast.error(d.message);
       }
     } catch (e) {
       toast.error("Lỗi kết nối");
@@ -313,13 +318,14 @@ const TaskItem = ({
           assignee_id: data.assignee_id || null,
         }),
       });
+      const d = await res.json();
       if (res.ok) {
         setIsAddingSub(false);
         setIsExpanded(true);
         onRefresh();
         toast.success("Đã thêm con");
       } else {
-        toast.error("Lỗi tạo");
+        toast.error(d.message);
       }
     } catch (e) {
       toast.error("Lỗi kết nối");
@@ -414,7 +420,7 @@ const TaskItem = ({
                   </span>
                 </div>
 
-                {/* Hiển thị Thời gian hoàn thành */}
+                {/* Hiển thị Thời gian */}
                 {task.status === "DONE" && task.completed_at ? (
                   <>
                     <div
@@ -442,6 +448,15 @@ const TaskItem = ({
                       📅 {formatDateDisplay(task.due_date)}
                     </div>
                   )
+                )}
+
+                {task.status !== "DONE" && (
+                  <div className={styles.metaItem} title="Ngày tạo">
+                    🕒{" "}
+                    <span className="text-gray-400">
+                      {formatDateDisplay(task.created_at)}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
@@ -479,16 +494,19 @@ const TaskItem = ({
           </div>
         </div>
 
-        {/* --- KHU VỰC COMMENT & ATTACHMENT --- */}
+        {/* --- KHU VỰC COMMENT & FILE --- */}
         <div className="ml-8 pl-4 border-l border-gray-100">
-          {/* Khung Chat */}
           {showComments && (
             <div className="mb-4">
-              <CommentSection taskId={task.id} token={token} />
+              {/* Truyền members vào để hỗ trợ Tag @User */}
+              <CommentSection
+                taskId={task.id}
+                token={token}
+                members={members}
+              />
             </div>
           )}
 
-          {/* Danh sách File */}
           <AttachmentList
             taskId={task.id}
             token={token}
@@ -614,8 +632,8 @@ function ProjectDetailsContent() {
         },
         body: JSON.stringify({ status: newStatus }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Lỗi cập nhật");
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.message);
       setProject((p) => ({ ...p, status: newStatus }));
       toast.success(`Dự án: ${newStatus}`);
     } catch (e) {
@@ -624,7 +642,6 @@ function ProjectDetailsContent() {
       setIsUpdatingProject(false);
     }
   };
-
   const handleCreateRootTask = async (data) => {
     setIsCreating(true);
     try {
@@ -646,7 +663,6 @@ function ProjectDetailsContent() {
       toast.error("Lỗi tạo");
     }
   };
-
   const handleOpenInviteModal = async () => {
     setIsMemberModalOpen(true);
     try {
@@ -654,19 +670,13 @@ function ProjectDetailsContent() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        const data = await res.json();
-        const allUsers = data.data || data;
-        const memberIds = new Set(members.map((m) => m.id));
-        const available = allUsers.filter(
-          (u) => !memberIds.has(u.id) && u.role !== "ADMIN"
-        );
-        setCandidates(available);
+        const d = await res.json();
+        const all = d.data || d;
+        const mIds = new Set(members.map((m) => m.id));
+        setCandidates(all.filter((u) => !mIds.has(u.id) && u.role !== "ADMIN"));
       }
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
   };
-
   const handleInviteMember = async (e) => {
     e.preventDefault();
     if (!inviteEmail) return toast.error("Vui lòng chọn thành viên");
@@ -695,7 +705,6 @@ function ProjectDetailsContent() {
       setIsInviting(false);
     }
   };
-
   const openConfirmDelete = (type, id, name) => {
     setConfirmModal({
       isOpen: true,
@@ -761,9 +770,6 @@ function ProjectDetailsContent() {
             </div>
           </div>
           <div className={styles.headerActions}>
-            {/* CHUÔNG THÔNG BÁO */}
-            <NotificationBell />
-
             {user?.role === "ADMIN" ||
             (user?.role === "PM" && project?.created_by === user?.id) ? (
               <div className={styles.projectStatusSelectWrapper}>
@@ -933,6 +939,9 @@ function ProjectDetailsContent() {
                           <p className="font-medium text-sm text-gray-900">
                             {member.username}
                           </p>
+                          {member.is_manager && (
+                            <span className="text-xs text-yellow-500">⭐</span>
+                          )}
                         </div>
                         <p className="text-xs text-gray-500">{member.email}</p>
                       </div>
@@ -989,9 +998,7 @@ function ProjectDetailsContent() {
 
 export default function Page() {
   return (
-    <Suspense
-      fallback={<div className="p-8 text-center">Đang tải dự án...</div>}
-    >
+    <Suspense fallback={<div className="p-8 text-center">Đang tải...</div>}>
       <ProjectDetailsContent />
     </Suspense>
   );
