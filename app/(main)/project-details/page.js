@@ -4,32 +4,29 @@ import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
+
+// --- IMPORTS COMPONENTS ---
 import Avatar from "../../components/Avatar";
 import ConfirmModal from "../../components/ConfirmModal";
 import ProjectReport from "../../components/ProjectReport";
 import AttachmentList from "../../components/AttachmentList";
+import CommentSection from "../../components/CommentSection"; // Tích hợp bình luận
+import NotificationBell from "../../components/NotificationBell"; // Tích hợp chuông
 import styles from "./styles.module.css";
 
 const API_URL = "/api/v1";
 
-// --- 1. HÀM SỬA LỖI HIỂN THỊ TRONG Ô INPUT ---
-// Hàm này lấy giờ trên máy tính của bạn (Local) để điền vào ô input
-// Giúp input không bị lệch múi giờ khi mở form sửa
+// --- HELPERS ---
+
+// Format cho input datetime-local
 const formatDateForInput = (isoString) => {
   if (!isoString) return "";
-  const date = new Date(isoString); // Trình duyệt tự đổi UTC về Local tại đây
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-
-  // Kết quả: "2023-11-25T14:30" (Đúng giờ Việt Nam)
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+  const date = new Date(isoString);
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date - offset).toISOString().slice(0, 16);
 };
 
-// Hàm hiển thị text đẹp (VN)
+// Format hiển thị (VN)
 const formatDateDisplay = (isoString) => {
   if (!isoString) return "";
   return new Date(isoString).toLocaleDateString("vi-VN", {
@@ -41,12 +38,13 @@ const formatDateDisplay = (isoString) => {
   });
 };
 
+// Tính thời gian thực hiện (Lead Time)
 const calculateDuration = (start, end) => {
   if (!start || !end) return "";
   const startDate = new Date(start);
   const endDate = new Date(end);
   const diffMs = endDate - startDate;
-  if (diffMs < 0) return "0 giây";
+  if (diffMs <= 0) return "Vừa xong";
 
   const totalSeconds = Math.floor(diffMs / 1000);
   const days = Math.floor(totalSeconds / (3600 * 24));
@@ -59,7 +57,7 @@ const calculateDuration = (start, end) => {
   else return `${minutes} phút ${seconds} giây`;
 };
 
-// --- TASK FORM ---
+// --- COMPONENT 1: TASK FORM ---
 const TaskForm = ({
   onSubmit,
   onCancel,
@@ -72,7 +70,7 @@ const TaskForm = ({
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
     description: initialData?.description || "",
-    // Sử dụng hàm mới sửa để hiển thị đúng giờ trong ô input
+    // start_date ẩn, tự động gán khi tạo mới
     due_date: formatDateForInput(initialData?.due_date),
     priority: initialData?.priority || "MEDIUM",
     assignee_id: initialData?.assignee_id || "",
@@ -86,19 +84,10 @@ const TaskForm = ({
     if (!formData.title.trim()) return;
 
     const payload = { ...formData };
-
-    // Nếu tạo mới: Lấy giờ hiện tại (UTC)
+    // Nếu tạo mới -> gán start_date = NOW
     if (!initialData) {
       payload.start_date = new Date().toISOString();
     }
-
-    // --- QUAN TRỌNG: CHUYỂN ĐỔI KHI LƯU ---
-    // Khi người dùng chọn "14:30" trên form, nó là giờ Local.
-    // Ta cần new Date(...) để trình duyệt đổi nó sang UTC trước khi gửi về Server.
-    if (payload.due_date) {
-      payload.due_date = new Date(payload.due_date).toISOString();
-    }
-
     onSubmit(payload);
   };
 
@@ -201,7 +190,7 @@ const TaskForm = ({
   );
 };
 
-// --- TASK ITEM ---
+// --- COMPONENT 2: TASK ITEM ---
 const TaskItem = ({
   task,
   level = 0,
@@ -217,6 +206,7 @@ const TaskItem = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [showComments, setShowComments] = useState(false); // State bật tắt comment
 
   const canUpdateStatus =
     currentUser?.role === "ADMIN" ||
@@ -224,29 +214,30 @@ const TaskItem = ({
     task.assignee_id === currentUser?.id;
   const canFullEdit =
     currentUser?.role === "ADMIN" || currentUser?.role === "PM";
+
   const assigneeName =
     members.find((m) => m.id === task.assignee_id)?.username || "Chưa giao";
 
+  // Helper Styles
   const getPriorityClass = (p) => {
     if (p === "URGENT") return styles.badgeUrgent;
     if (p === "HIGH") return styles.badgeHigh;
     if (p === "LOW") return styles.badgeLow;
     return styles.badgeMedium;
   };
-
   const getStatusClass = () => {
     let base = styles.statusSelectSmall;
     if (!canUpdateStatus) return `${base} ${styles.statusSelectDisabled}`;
-    base += " hover:bg-opacity-80 ";
     if (task.status === "DONE") return base + " " + styles.statusDone;
     if (task.status === "IN_PROGRESS")
       return base + " " + styles.statusProgress;
     return base + " " + styles.statusDefault;
   };
 
+  // Handlers
   const handleStatusChange = async (val) => {
     if (!canUpdateStatus) {
-      toast.error("Bạn không được phân công công việc này!");
+      toast.error("Bạn không được phân công!");
       return;
     }
     setIsUpdatingStatus(true);
@@ -293,13 +284,12 @@ const TaskItem = ({
           }),
         }
       );
-      const d = await res.json();
       if (res.ok) {
         setIsEditing(false);
         onRefresh();
-        toast.success("Đã cập nhật công việc");
+        toast.success("Đã cập nhật");
       } else {
-        toast.error(d.message);
+        toast.error("Lỗi cập nhật");
       }
     } catch (e) {
       toast.error("Lỗi kết nối");
@@ -323,14 +313,13 @@ const TaskItem = ({
           assignee_id: data.assignee_id || null,
         }),
       });
-      const d = await res.json();
       if (res.ok) {
         setIsAddingSub(false);
         setIsExpanded(true);
         onRefresh();
         toast.success("Đã thêm con");
       } else {
-        toast.error(d.message);
+        toast.error("Lỗi tạo");
       }
     } catch (e) {
       toast.error("Lỗi kết nối");
@@ -390,6 +379,7 @@ const TaskItem = ({
                 >
                   {task.priority}
                 </span>
+
                 {canFullEdit && (
                   <div className={styles.editActions}>
                     <button
@@ -411,9 +401,11 @@ const TaskItem = ({
                   </div>
                 )}
               </div>
+
               {task.description && (
                 <p className={styles.taskDesc}>{task.description}</p>
               )}
+
               <div className={styles.taskMeta}>
                 <div className={styles.metaItem} title="Người thực hiện">
                   👤{" "}
@@ -421,6 +413,8 @@ const TaskItem = ({
                     {assigneeName}
                   </span>
                 </div>
+
+                {/* Hiển thị Thời gian hoàn thành */}
                 {task.status === "DONE" && task.completed_at ? (
                   <>
                     <div
@@ -431,7 +425,7 @@ const TaskItem = ({
                     </div>
                     <div
                       className="flex items-center gap-1 text-green-600 bg-green-50 px-1.5 rounded border border-green-100"
-                      title="Tổng thời gian"
+                      title="Tổng thời gian thực hiện"
                     >
                       ⏱️{" "}
                       <span>
@@ -449,18 +443,20 @@ const TaskItem = ({
                     </div>
                   )
                 )}
-                {task.status !== "DONE" && (
-                  <div className={styles.metaItem} title="Ngày tạo">
-                    🕒{" "}
-                    <span className="text-gray-400">
-                      {formatDateDisplay(task.created_at)}
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
           </div>
+
           <div className={styles.taskRight}>
+            {/* Nút Bình luận */}
+            <button
+              onClick={() => setShowComments(!showComments)}
+              className={`text-gray-400 hover:text-indigo-600 transition-colors p-1 ${showComments ? "text-indigo-600" : ""}`}
+              title="Bình luận"
+            >
+              💬
+            </button>
+
             {canFullEdit && (
               <button
                 onClick={() => setIsAddingSub(!isAddingSub)}
@@ -482,13 +478,24 @@ const TaskItem = ({
             </select>
           </div>
         </div>
+
+        {/* --- KHU VỰC COMMENT & ATTACHMENT --- */}
         <div className="ml-8 pl-4 border-l border-gray-100">
+          {/* Khung Chat */}
+          {showComments && (
+            <div className="mb-4">
+              <CommentSection taskId={task.id} token={token} />
+            </div>
+          )}
+
+          {/* Danh sách File */}
           <AttachmentList
             taskId={task.id}
             token={token}
             canEdit={canFullEdit || task.assignee_id === currentUser?.id}
           />
         </div>
+
         {isAddingSub && (
           <div className={styles.taskWrapperChild}>
             <div className="flex items-start gap-2">
@@ -507,6 +514,7 @@ const TaskItem = ({
             </div>
           </div>
         )}
+
         {isExpanded &&
           task.subTasks?.map((sub) => (
             <TaskItem
@@ -536,6 +544,7 @@ function ProjectDetailsContent() {
   const [tasks, setTasks] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdatingProject, setIsUpdatingProject] = useState(false);
   const [activeTab, setActiveTab] = useState("TASKS");
@@ -645,13 +654,19 @@ function ProjectDetailsContent() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        const d = await res.json();
-        const all = d.data || d;
-        const mIds = new Set(members.map((m) => m.id));
-        setCandidates(all.filter((u) => !mIds.has(u.id) && u.role !== "ADMIN"));
+        const data = await res.json();
+        const allUsers = data.data || data;
+        const memberIds = new Set(members.map((m) => m.id));
+        const available = allUsers.filter(
+          (u) => !memberIds.has(u.id) && u.role !== "ADMIN"
+        );
+        setCandidates(available);
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error(e);
+    }
   };
+
   const handleInviteMember = async (e) => {
     e.preventDefault();
     if (!inviteEmail) return toast.error("Vui lòng chọn thành viên");
@@ -680,6 +695,7 @@ function ProjectDetailsContent() {
       setIsInviting(false);
     }
   };
+
   const openConfirmDelete = (type, id, name) => {
     setConfirmModal({
       isOpen: true,
@@ -745,6 +761,9 @@ function ProjectDetailsContent() {
             </div>
           </div>
           <div className={styles.headerActions}>
+            {/* CHUÔNG THÔNG BÁO */}
+            <NotificationBell />
+
             {user?.role === "ADMIN" ||
             (user?.role === "PM" && project?.created_by === user?.id) ? (
               <div className={styles.projectStatusSelectWrapper}>
@@ -914,9 +933,6 @@ function ProjectDetailsContent() {
                           <p className="font-medium text-sm text-gray-900">
                             {member.username}
                           </p>
-                          {member.is_manager && (
-                            <span className="text-xs text-yellow-500">⭐</span>
-                          )}
                         </div>
                         <p className="text-xs text-gray-500">{member.email}</p>
                       </div>
@@ -973,7 +989,9 @@ function ProjectDetailsContent() {
 
 export default function Page() {
   return (
-    <Suspense fallback={<div className="p-8 text-center">Đang tải...</div>}>
+    <Suspense
+      fallback={<div className="p-8 text-center">Đang tải dự án...</div>}
+    >
       <ProjectDetailsContent />
     </Suspense>
   );
