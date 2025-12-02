@@ -8,9 +8,10 @@ import ConfirmModal from "./ConfirmModal";
 
 const API_URL = "/api/v1";
 
-// --- ITEM COMMENT ---
+// --- COMPONENT CON: ITEM COMMENT ---
 const CommentItem = ({ cmt, isMe, onDelete, onReply, userRole }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+
   const formatTime = (iso) =>
     new Date(iso).toLocaleString("vi-VN", {
       hour: "2-digit",
@@ -19,7 +20,6 @@ const CommentItem = ({ cmt, isMe, onDelete, onReply, userRole }) => {
       month: "2-digit",
     });
 
-  // 1. NẾU BẢN THÂN ĐÃ XÓA
   if (cmt.is_deleted) {
     return (
       <div
@@ -37,7 +37,6 @@ const CommentItem = ({ cmt, isMe, onDelete, onReply, userRole }) => {
     );
   }
 
-  // 2. HIỂN THỊ BÌNH THƯỜNG
   const hasContent = cmt.content && cmt.content.trim().length > 0;
   const isLong =
     hasContent &&
@@ -48,17 +47,17 @@ const CommentItem = ({ cmt, isMe, onDelete, onReply, userRole }) => {
       className={`flex gap-2 ${isMe ? "flex-row-reverse" : ""} animate-fade-in`}
     >
       <Avatar name={cmt.username} size="sm" />
+
       <div
         className={`max-w-[85%] flex flex-col ${isMe ? "items-end" : "items-start"}`}
       >
         <div
           className={`p-3 rounded-lg text-sm relative group shadow-sm ${isMe ? "bg-indigo-50 text-indigo-900" : "bg-gray-100 text-gray-800"}`}
         >
-          {/* --- PHẦN TRÍCH DẪN (REPLY) --- */}
+          {/* Reply Quote */}
           {cmt.parent_id && (
             <div className="mb-2 pl-2 border-l-2 border-gray-300 text-xs text-gray-500 bg-white/50 p-1 rounded">
               <span className="font-bold mr-1">@{cmt.parent_username}:</span>
-              {/* Kiểm tra parent_is_deleted để hiển thị đúng ngay lập tức */}
               <span className="italic line-clamp-1">
                 {cmt.parent_is_deleted
                   ? "🚫 Tin nhắn đã bị xóa"
@@ -67,6 +66,7 @@ const CommentItem = ({ cmt, isMe, onDelete, onReply, userRole }) => {
             </div>
           )}
 
+          {/* Header */}
           <div
             className={`flex items-baseline justify-between gap-2 mb-1 ${isMe ? "flex-row-reverse" : ""}`}
           >
@@ -76,22 +76,23 @@ const CommentItem = ({ cmt, isMe, onDelete, onReply, userRole }) => {
             </span>
           </div>
 
+          {/* Nội dung Text */}
           {hasContent && (
             <div
               className={`whitespace-pre-wrap break-words leading-relaxed ${!isExpanded && isLong ? "line-clamp-3" : ""}`}
             >
-              {cmt.content.split(" ").map((word, i) =>
+              {/* Highlight thẻ @User bằng màu xanh đậm */}
+              {cmt.content.split(/(\s+)/).map((word, i) =>
                 word.startsWith("@") ? (
                   <span key={i} className="text-blue-600 font-bold">
-                    {word}{" "}
+                    {word}
                   </span>
                 ) : (
-                  word + " "
+                  word
                 )
               )}
             </div>
           )}
-
           {isLong && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
@@ -101,6 +102,7 @@ const CommentItem = ({ cmt, isMe, onDelete, onReply, userRole }) => {
             </button>
           )}
 
+          {/* Ảnh */}
           {cmt.image_url && (
             <div className="mt-2">
               <a href={cmt.image_url} target="_blank" rel="noopener noreferrer">
@@ -113,6 +115,7 @@ const CommentItem = ({ cmt, isMe, onDelete, onReply, userRole }) => {
             </div>
           )}
 
+          {/* Actions */}
           <div
             className={`absolute top-1 ${isMe ? "left-[-50px]" : "right-[-50px]"} opacity-0 group-hover:opacity-100 transition-opacity flex gap-1`}
           >
@@ -152,12 +155,14 @@ export default function CommentSection({ taskId, token, members = [] }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [showMentions, setShowMentions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState(""); // Từ khóa tìm kiếm user sau dấu @
+
   const [deleteModal, setDeleteModal] = useState({
     isOpen: false,
     commentId: null,
   });
-
   const scrollRef = useRef(null);
+  const textareaRef = useRef(null); // Ref để focus lại textarea
 
   const fetchComments = async () => {
     try {
@@ -195,21 +200,45 @@ export default function CommentSection({ taskId, token, members = [] }) {
     setPreviewUrl(null);
   };
 
+  // --- XỬ LÝ NHẬP LIỆU THÔNG MINH ---
   const handleInputChange = (e) => {
     const val = e.target.value;
     setContent(val);
-    if (val.endsWith("@")) setShowMentions(true);
-    else if (val.endsWith(" ")) setShowMentions(false);
+
+    // Regex: Tìm @ ở cuối chuỗi, và @ đó phải đứng đầu dòng hoặc sau dấu cách
+    // (?:\s|^) : Non-capturing group cho khoảng trắng hoặc đầu dòng
+    // @(\w*)$  : Ký tự @ theo sau là các chữ cái (search query) cho đến hết chuỗi
+    const match = val.match(/(?:\s|^)@(\w*)$/);
+
+    if (match) {
+      setShowMentions(true);
+      setMentionQuery(match[1].toLowerCase()); // Lưu từ khóa để lọc danh sách (nếu cần)
+    } else {
+      setShowMentions(false);
+      setMentionQuery("");
+    }
   };
 
+  // --- XỬ LÝ CHỌN TAG ---
   const handleSelectMention = (username) => {
-    setContent((prev) => prev + username + " ");
+    // Thay thế cụm @danggo bằng @Username + dấu cách
+    // Regex: /@(\w*)$/ tìm cụm @... ở cuối cùng
+    const newContent = content.replace(/@(\w*)$/, `@${username} `);
+
+    setContent(newContent);
     setShowMentions(false);
+    setMentionQuery("");
+
+    // Focus lại vào ô nhập liệu để gõ tiếp
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
   };
 
   const handleReply = (cmt) => {
     setReplyTo(cmt);
     setContent(`@${cmt.username} `);
+    if (textareaRef.current) textareaRef.current.focus();
   };
 
   const handleSubmit = async (e) => {
@@ -238,6 +267,7 @@ export default function CommentSection({ taskId, token, members = [] }) {
           newComment.parent_content = replyTo.content;
         }
         setComments((prev) => [...prev, newComment]);
+
         setContent("");
         setReplyTo(null);
         removeFile();
@@ -251,7 +281,6 @@ export default function CommentSection({ taskId, token, members = [] }) {
     }
   };
 
-  // --- SỬA HÀM NÀY: LOGIC CẬP NHẬT 2 CHIỀU ---
   const handleConfirmDelete = async () => {
     if (!deleteModal.commentId) return;
     try {
@@ -260,10 +289,9 @@ export default function CommentSection({ taskId, token, members = [] }) {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Cập nhật State:
+      // Update State Soft Delete
       setComments((prev) =>
         prev.map((c) => {
-          // 1. Cập nhật chính dòng bị xóa
           if (c.id === deleteModal.commentId) {
             return {
               ...c,
@@ -272,16 +300,13 @@ export default function CommentSection({ taskId, token, members = [] }) {
               image_url: null,
             };
           }
-
-          // 2. Cập nhật các dòng con (Reply) đang trích dẫn dòng này
           if (c.parent_id === deleteModal.commentId) {
             return {
               ...c,
-              parent_is_deleted: true, // Đánh dấu để UI hiển thị "Tin nhắn đã xóa"
-              parent_content: "Tin nhắn đã bị xóa", // Cập nhật nội dung trích dẫn
+              parent_is_deleted: true,
+              parent_content: "Tin nhắn đã bị xóa",
             };
           }
-
           return c;
         })
       );
@@ -292,14 +317,20 @@ export default function CommentSection({ taskId, token, members = [] }) {
       toast.error("Lỗi xóa");
     }
   };
-  // ---------------------------------------------
 
   const handleKeyDown = (e) => {
+    // Nếu đang hiện bảng chọn user, Enter sẽ chọn user đầu tiên (nếu có logic filter)
+    // Ở đây đơn giản hóa: Nếu Enter không Shift -> Gửi
     if (e.key === "Enter" && !e.shiftKey && !showMentions) {
       e.preventDefault();
       handleSubmit();
     }
   };
+
+  // Lọc danh sách user dựa trên từ khóa đang gõ sau @
+  const filteredMembers = members.filter((m) =>
+    m.username.toLowerCase().includes(mentionQuery)
+  );
 
   if (loading)
     return (
@@ -366,16 +397,20 @@ export default function CommentSection({ taskId, token, members = [] }) {
         </div>
       )}
 
-      {showMentions && members && (
-        <div className="absolute bottom-14 left-0 bg-white border border-gray-200 shadow-lg rounded-lg w-48 max-h-40 overflow-y-auto z-50">
-          {members.map((m) => (
+      {/* MENU CHỌN USER (Chỉ hiện khi showMentions = true) */}
+      {showMentions && filteredMembers.length > 0 && (
+        <div className="absolute bottom-14 left-0 bg-white border border-gray-200 shadow-xl rounded-lg w-48 max-h-40 overflow-y-auto z-50 animate-fade-in">
+          <div className="px-3 py-1 bg-gray-50 text-[10px] text-gray-500 font-bold uppercase border-b">
+            Gợi ý thành viên
+          </div>
+          {filteredMembers.map((m) => (
             <div
               key={m.id}
               onClick={() => handleSelectMention(m.username)}
-              className="px-3 py-2 hover:bg-indigo-50 cursor-pointer flex items-center gap-2 text-xs"
+              className="px-3 py-2 hover:bg-indigo-50 cursor-pointer flex items-center gap-2 text-xs transition-colors"
             >
               <Avatar name={m.username} size="sm" />
-              <span>{m.username}</span>
+              <span className="font-medium text-gray-700">{m.username}</span>
             </div>
           ))}
         </div>
@@ -402,6 +437,7 @@ export default function CommentSection({ taskId, token, members = [] }) {
         </label>
 
         <textarea
+          ref={textareaRef}
           rows={1}
           className="flex-1 text-sm outline-none resize-none bg-transparent custom-scrollbar max-h-24 py-1.5 disabled:bg-gray-50 disabled:text-gray-400"
           placeholder={
@@ -446,7 +482,7 @@ export default function CommentSection({ taskId, token, members = [] }) {
               fill="currentColor"
               className="w-4 h-4"
             >
-              <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
             </svg>
           )}
         </button>
